@@ -1,13 +1,12 @@
 use crate::{
     FallbackClass, IssueCategory,
-    domain::temporal::{Clock, Date},
-    interpretation::{TemporalFailure, TemporalPreference, Value},
+    domain::temporal::{Clock, ClockRange, Date, DateTail},
+    interpretation::{Reading, TemporalFailure, TemporalPreference, UnresolvedFinding, Value},
     morphology::Inflection,
-    verbalize::{date_spoken, time_spoken},
 };
 
 use super::{
-    context::{DATE_CUES, TIME_CUES, cue_key, is_clock_word},
+    context::{DATE_CUES, FOLLOWING_DATE_CUES, TIME_CUES, cue_key, is_clock_word},
     scan::{Token, whitespace_between},
 };
 use crate::notation::split_suffix;
@@ -15,32 +14,28 @@ use crate::notation::split_suffix;
 pub(super) fn date(text: &str, permitted: bool) -> Result<Value, TemporalFailure> {
     let (base, suffix) = split_suffix(text).ok_or(IssueCategory::InvalidExpression)?;
     let date = Date::parse(base).ok_or(IssueCategory::InvalidExpression)?;
-    if suffix.is_some() && !date.dotted() {
-        return Err(IssueCategory::Unsupported.into());
-    }
-    if let Some(suffix) = suffix
-        && date_spoken(date).source_suffix(Inflection::Locative) != suffix
-    {
-        return Err(IssueCategory::InvalidExpression.into());
-    }
-    if !permitted {
+    let tail = DateTail::parse(date, suffix).ok_or(IssueCategory::InvalidExpression)?;
+    if !permitted && !date.year_first_slash() {
         return Err(TemporalFailure {
             category: IssueCategory::Ambiguous,
-            preference: (!date.slash()).then_some(TemporalPreference::Date(date, suffix.is_some())),
+            preference: (!date.slash()).then_some(TemporalPreference::Date(date, tail)),
         });
     }
-    Ok(Value::Date(date, suffix.is_some()))
+    Ok(Value::Date(date, tail))
 }
 
 pub(super) fn time(text: &str, permitted: bool) -> Result<Value, TemporalFailure> {
     let (base, suffix) = split_suffix(text).ok_or(IssueCategory::InvalidExpression)?;
     let time = Clock::parse(base).ok_or(IssueCategory::InvalidExpression)?;
     if let Some(suffix) = suffix
-        && time_spoken(time).source_suffix(Inflection::Locative) != suffix
+        && time
+            .tail()
+            .strip_suffix_prefix(Inflection::Locative, suffix)
+            != Some("")
     {
         return Err(IssueCategory::InvalidExpression.into());
     }
-    if !permitted {
+    if !permitted && !(base.contains('.') && suffix.is_some()) {
         return Err(TemporalFailure {
             category: IssueCategory::Ambiguous,
             preference: Some(TemporalPreference::Time(time, suffix.is_some())),
@@ -82,7 +77,7 @@ fn frame(text: &str, tokens: &[Token<'_>], index: usize) -> bool {
     ) else {
         return false;
     };
-    matches!(date(date_token.text, true), Ok(Value::Date(date, true)) if date.dotted())
+    matches!(date(date_token.text, true), Ok(Value::Date(_, tail)) if tail.is_locative())
         && is_clock_word(cue_token.text)
         && matches!(time(time_token.text, true), Ok(Value::Time(_, true)))
         && whitespace_between(text, date_token.range.end, cue_token.range.start)
@@ -95,7 +90,14 @@ pub(super) fn recognize(
     index: usize,
 ) -> Option<(Result<Value, TemporalFailure>, FallbackClass)> {
     let token = tokens[index].text;
-    let (base, _) = split_suffix(token)?;
+    let (base, suffix) = split_suffix(token)?;
+    if !base.starts_with(char::is_numeric)
+        || !base
+            .chars()
+            .all(|ch| ch.is_numeric() || matches!(ch, '.' | ':' | '-' | '/'))
+    {
+        return None;
+    }
     let dots = base.bytes().filter(|b| *b == b'.').count();
     let hyphens = base.bytes().filter(|b| *b == b'-').count();
     let slashes = base.bytes().filter(|b| *b == b'/').count();
@@ -109,16 +111,96 @@ pub(super) fn recognize(
         return Some((
             date(
                 token,
-                frame(text, tokens, index) || cue(text, tokens, index, DATE_CUES),
+                frame(text, tokens, index)
+                    || cue(text, tokens, index, DATE_CUES)
+                    || tokens.get(index + 1).is_some_and(|following| {
+                        whitespace_between(text, tokens[index].range.end, following.range.start)
+                            && FOLLOWING_DATE_CUES.contains(&cue_key(following.text).as_str())
+                    }),
             ),
             FallbackClass::Date,
         ));
     }
-    if base.contains(':') || (dots == 1 && cue(text, tokens, index, TIME_CUES)) {
+    let dotted_clock = base.split_once('.').is_some_and(|(hour, minute)| {
+        (1..=2).contains(&hour.len())
+            && minute.len() == 2
+            && [hour, minute]
+                .iter()
+                .all(|part| part.bytes().all(|byte| byte.is_ascii_digit()))
+    });
+    if base.contains(':')
+        || (dots == 1
+            && (cue(text, tokens, index, TIME_CUES) || (suffix.is_some() && dotted_clock)))
+    {
         return Some((
             time(token, cue(text, tokens, index, TIME_CUES)),
             FallbackClass::Time,
         ));
     }
     None
+}
+
+pub(super) fn range_hint(text: &str, following_ile: bool) -> Option<Value> {
+    Some(Value::ClockRange(ClockRange::parse(text, following_ile)?))
+}
+
+pub(super) fn range(text: &str, tokens: &[Token<'_>], index: usize) -> Option<(Reading, usize)> {
+    let first = tokens.get(index)?;
+    let endpoint = first.text.split(['-', '–']).next()?;
+    if !clock_shape(endpoint) {
+        return None;
+    }
+
+    fn clock_shape(source: &str) -> bool {
+        let base = source.split(['\'', '’']).next().unwrap_or(source);
+        let separator = if base.contains(':') { ':' } else { '.' };
+        let mut parts = base.split(separator);
+        let Some(hour) = parts.next() else {
+            return false;
+        };
+        let Some(minute) = parts.next() else {
+            return false;
+        };
+        (1..=2).contains(&hour.len())
+            && minute.len() == 2
+            && (separator == ':' || parts.next().is_none())
+            && [hour, minute]
+                .iter()
+                .all(|part| part.bytes().all(|byte| byte.is_ascii_digit()))
+    }
+    let mut end = index;
+    let mut separator = first.text.contains(['-', '–']);
+    if !separator {
+        let next = tokens.get(index + 1)?;
+        if !whitespace_between(text, first.range.end, next.range.start)
+            || !next.text.starts_with(['-', '–'])
+        {
+            return None;
+        }
+        end += 1;
+        separator = true;
+    }
+    if separator && tokens[end].text.ends_with(['-', '–']) {
+        let next = tokens.get(end + 1)?;
+        if !whitespace_between(text, tokens[end].range.end, next.range.start) {
+            return None;
+        }
+        end += 1;
+    }
+    let source = &text[first.range.start..tokens[end].range.end];
+    let ile = tokens.get(end + 1).is_some_and(|following| {
+        whitespace_between(text, tokens[end].range.end, following.range.start)
+            && cue_key(following.text) == "arasında"
+    });
+    Some((
+        match range_hint(source, ile) {
+            Some(value) => Reading::Resolved(value),
+            None => Reading::Unresolved(UnresolvedFinding::unresolved(
+                source,
+                FallbackClass::Time,
+                IssueCategory::InvalidExpression,
+            )),
+        },
+        end,
+    ))
 }

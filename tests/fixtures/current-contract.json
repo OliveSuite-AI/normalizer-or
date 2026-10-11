@@ -1952,7 +1952,7 @@
         "complete": true,
         "issues": [],
         "locale": "tr-TR",
-        "normalized_text": "Paket üzerinde iki miligram ve üç mikrogram miktarları bulunuyor. Alan ölçümü üç metrekare, hacim ölçümü beş metreküp olarak yazılmıştır. Araç saatte doksan kilometre hızla giderken akış saniyede beş metre düzeyindedir. Görev için on ila on beş kişi ve üç ila dört gün aralığı belirtiliyor. Birimler bağlamdan çıkarılmaz, yalnızca onaylı yazımlar kullanılır. Fazladan desteklenmeyen bileşikler korunmalı ve sessizce düzeltilmemelidir.",
+        "normalized_text": "Paket üzerinde iki miligram ve üç mikrogram miktarları bulunuyor. Alan ölçümü üç metrekare, hacim ölçümü beş metreküp olarak yazılmıştır. Araç doksan kilometre saat hızla giderken akış beş metre saniye düzeyindedir. Görev için on ila on beş kişi ve üç ila dört gün aralığı belirtiliyor. Birimler bağlamdan çıkarılmaz, yalnızca onaylı yazımlar kullanılır. Fazladan desteklenmeyen bileşikler korunmalı ve sessizce düzeltilmemelidir.",
         "segments": [
           {
             "kind": "Verbatim",
@@ -2032,7 +2032,7 @@
               "end": 137,
               "start": 129
             },
-            "text": "saatte doksan kilometre"
+            "text": "doksan kilometre saat"
           },
           {
             "kind": "Verbatim",
@@ -2048,7 +2048,7 @@
               "end": 166,
               "start": 161
             },
-            "text": "saniyede beş metre"
+            "text": "beş metre saniye"
           },
           {
             "kind": "Verbatim",
@@ -2098,7 +2098,7 @@
         "complete": true,
         "issues": [],
         "locale": "tr-TR",
-        "normalized_text": "Paket üzerinde iki miligram ve üç mikrogram miktarları bulunuyor. Alan ölçümü üç metrekare, hacim ölçümü beş metreküp olarak yazılmıştır. Araç saatte doksan kilometre hızla giderken akış saniyede beş metre düzeyindedir. Görev için on ila on beş kişi ve üç ila dört gün aralığı belirtiliyor. Birimler bağlamdan çıkarılmaz, yalnızca onaylı yazımlar kullanılır. Fazladan desteklenmeyen bileşikler korunmalı ve sessizce düzeltilmemelidir.",
+        "normalized_text": "Paket üzerinde iki miligram ve üç mikrogram miktarları bulunuyor. Alan ölçümü üç metrekare, hacim ölçümü beş metreküp olarak yazılmıştır. Araç doksan kilometre saat hızla giderken akış beş metre saniye düzeyindedir. Görev için on ila on beş kişi ve üç ila dört gün aralığı belirtiliyor. Birimler bağlamdan çıkarılmaz, yalnızca onaylı yazımlar kullanılır. Fazladan desteklenmeyen bileşikler korunmalı ve sessizce düzeltilmemelidir.",
         "segments": [
           {
             "kind": "Verbatim",
@@ -2178,7 +2178,7 @@
               "end": 137,
               "start": 129
             },
-            "text": "saatte doksan kilometre"
+            "text": "doksan kilometre saat"
           },
           {
             "kind": "Verbatim",
@@ -2194,7 +2194,7 @@
               "end": 166,
               "start": 161
             },
-            "text": "saniyede beş metre"
+            "text": "beş metre saniye"
           },
           {
             "kind": "Verbatim",
@@ -3160,7 +3160,7 @@
         "complete": true,
         "issues": [],
         "locale": "tr-TR",
-        "normalized_text": "saatte doksan kilometre ve saniyede beş metre",
+        "normalized_text": "doksan kilometre saat ve beş metre saniye",
         "segments": [
           {
             "kind": "Unit",
@@ -3168,7 +3168,7 @@
               "end": 8,
               "start": 0
             },
-            "text": "saatte doksan kilometre"
+            "text": "doksan kilometre saat"
           },
           {
             "kind": "Verbatim",
@@ -3184,7 +3184,7 @@
               "end": 17,
               "start": 12
             },
-            "text": "saniyede beş metre"
+            "text": "beş metre saniye"
           }
         ]
       }
@@ -3194,7 +3194,7 @@
         "complete": true,
         "issues": [],
         "locale": "tr-TR",
-        "normalized_text": "saatte doksan kilometre ve saniyede beş metre",
+        "normalized_text": "doksan kilometre saat ve beş metre saniye",
         "segments": [
           {
             "kind": "Unit",
@@ -3202,7 +3202,7 @@
               "end": 8,
               "start": 0
             },
-            "text": "saatte doksan kilometre"
+            "text": "doksan kilometre saat"
           },
           {
             "kind": "Verbatim",
@@ -3218,7 +3218,7 @@
               "end": 17,
               "start": 12
             },
-            "text": "saniyede beş metre"
+            "text": "beş metre saniye"
           }
         ]
       }

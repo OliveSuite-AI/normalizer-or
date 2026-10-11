@@ -5,6 +5,49 @@ For publishing instructions, see [CONTRIBUTING](CONTRIBUTING.md#releasing).
 Platform requirements are in the [README](README.md) and
 [Python installation guide](bindings/python/README.md#install).
 
+## Unreleased
+
+- Add bounded plural, six-person possession, case, locative-plus-ki and copular
+  suffixes for recognized numbers, percentages and quantities. Preserve
+  established case readings and report conflicting new spoken analyses rather
+  than selecting by parser iteration order.
+- Support all date formats' case/copular tails with distinct written/spoken
+  ending metadata, automatic year-first slash dates, exact following date cues,
+  suffixed dotted clocks and validated dot/colon clock ranges.
+- Read flat multiplication chains without evaluating them. Validate whole
+  operands, retaining grouped money and excluding protected identifiers.
+- Recognize contextual address aliases and atomic fields, numbered streets,
+  postal digits/labels and locality separators.
+- Correct grouped-account punctuation and continuation ownership, including
+  component-hint and invalid-prefix escapes.
+- Bound product lookahead at independent address fields, reject mixed arithmetic
+  as one expression and exclude complete protected telephone operands.
+- Keep grouped numeric ranges and date-plus-dash prose out of clock-range
+  admission without weakening invalid clock validation.
+- Remove pre-existing quadratic failed-telephone lookahead and electronic
+  parenthesis trimming. Preserve policy outcomes and add cooperative checks
+  during electronic boundary scanning.
+
+### Migration
+
+Public call shapes, enum variants, serialized labels and record fields remain
+unchanged. New primary readings change text, strict-mode success and diagnostic
+counts. Composite primary readings can emit multiple existing semantic segments;
+whole-owner hints still cannot select their components. Each emitted component
+counts toward work/output limits.
+
+Rates deliberately change from `saatte doksan kilometre` to
+`doksan kilometre saat` (and the analogous `m/s` order), for bare and suffixed
+forms. Date suffixes validate against the last written component and are adapted
+to the canonical spoken year. Clock ranges retain endpoint order; they do not
+calculate an overnight duration. Address-specific postal labels and separator
+readings apply only in reviewed address context.
+
+Corrected source ownership can invalidate formerly admitted component hints and
+change fallback spans. Invalid accounts still do not receive Iban certification.
+Preserve/Reject/Fallback defaults and real input/control/limit errors remain.
+The new forms are repository behavior pending release, not registry availability.
+
 ## 0.6.0 - 2026-10-11
 
 - Support plural, all six possessive forms and a final case suffix for every

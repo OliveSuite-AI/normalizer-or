@@ -18,5 +18,9 @@
   "policy-contract/review-mixed-members.json",
   "policy-contract/review-tight-admission.json",
   "policy-contract/pronunciation-ema-lightning.json",
-  "policy-contract/pronunciation-nominal.json"
+  "policy-contract/pronunciation-nominal.json",
+  "policy-contract/numeric-tails.json",
+  "policy-contract/temporal-notation.json",
+  "policy-contract/composite-notation.json",
+  "policy-contract/review-notation-admission.json"
 ]

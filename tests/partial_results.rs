@@ -78,7 +78,6 @@ fn invalid_temporal_tokens_and_suffixed_iso_are_preserved_whole() {
         "2026-03-4",
         "2026--03-14",
         "2026-03-14-25",
-        "2026-03-14'te",
     ] {
         let source = format!("tarih {expression}; 25 TL");
         let r = n.normalize(&source, &NormalizeOptions::default()).unwrap();

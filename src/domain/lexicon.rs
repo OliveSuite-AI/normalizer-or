@@ -127,8 +127,8 @@ pub(crate) fn unit_prefix(text: &str) -> Option<(&str, Lexeme)> {
 
 pub(crate) fn rate(symbol: &str) -> Option<(Lexeme, Lexeme)> {
     match symbol {
-        "km/sa" | "km/h" => Some((unit("sa")?, unit("km")?)),
-        "m/s" => Some((unit("sn")?, unit("m")?)),
+        "km/sa" | "km/h" => Some((unit("km")?, unit("sa")?)),
+        "m/s" => Some((unit("m")?, unit("sn")?)),
         _ => None,
     }
 }
@@ -246,6 +246,9 @@ impl Currency {
             Self::Usd | Self::Eur => Lexeme::same("sent", FrontFlat, Voiceless),
             Self::Gbp => Lexeme::same("peni", FrontFlat, Vowel),
         }
+    }
+    pub(crate) fn compound_head(self) -> Option<Lexeme> {
+        matches!(self, Self::Try).then_some(Lexeme::same("Türk lira", BackFlat, Vowel))
     }
 }
 

@@ -1,0 +1,12 @@
+[
+  {"id":"date-copula","class":"date","text":"tarih 15.10.2026'dır","expected":"tarih on beş Ekim iki bin yirmi altıdır"},
+  {"id":"date-forward-cue","class":"date","text":"07.10.2026 tarihinde","expected":"yedi Ekim iki bin yirmi altı tarihinde"},
+  {"id":"date-year-first-slash","class":"date","text":"2026/12/31","expected":"otuz bir Aralık iki bin yirmi altı","kind":"Date"},
+  {"id":"date-source-target-case","class":"date","text":"tarih 2026-12-31'de","expected":"tarih otuz bir Aralık iki bin yirmi altıda"},
+  {"id":"time-dotted-suffix-intent","class":"time","text":"14.30'da","expected":"on dört otuzda","kind":"Time"},
+  {"id":"time-range-notation","class":"range","text":"13:00-17:00","expected":"on üç ila on yedi","kind":"Range"},
+  {"id":"time-range-following-between","class":"range","text":"13:00-17:00 arasında","expected":"on üç ile on yedi arasında"},
+  {"id":"time-range-dotted","class":"range","text":"15.16-17.30","expected":"on beş on altı ila on yedi otuz","kind":"Range"},
+  {"id":"time-range-overnight-order","class":"range","text":"23:00-01:00","expected":"yirmi üç ila bir","kind":"Range"},
+  {"id":"time-range-hint","class":"range","text":"13:00-17:00","hint":{"start":0,"end":11,"kind":"range"},"expected":"on üç ila on yedi","kind":"Range"}
+]

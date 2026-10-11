@@ -1,0 +1,12 @@
+[
+  {"id":"number-attributive","class":"number","text":"2026'daki","expected":"iki bin yirmi altıdaki","kind":"Cardinal"},
+  {"id":"number-attributive-copula","class":"number","text":"2026'dakidir","expected":"iki bin yirmi altıdakidir","kind":"Cardinal"},
+  {"id":"percent-possessive","class":"percent","text":"%20'si","expected":"yüzde yirmisi","kind":"Percent"},
+  {"id":"quantity-copula","class":"money","text":"600 TL'dir","expected":"altı yüz Türk lirasıdır","kind":"Money"},
+  {"id":"quantity-minor-copula","class":"money","text":"600,05 TL'dir","expected":"altı yüz Türk lirası beş kuruştur","kind":"Money"},
+  {"id":"quantity-first-possessor","class":"money","text":"25 TL'm","expected":"yirmi beş Türk liram","kind":"Money"},
+  {"id":"quantity-plural-possessor","class":"money","text":"25 TL'lerim","expected":"yirmi beş Türk liralarım","kind":"Money"},
+  {"id":"quantity-minor-possessor","class":"money","text":"25,50 TL'm","expected":"yirmi beş Türk lirası elli kuruşum","kind":"Money"},
+  {"id":"rate-written-order","class":"rate","text":"5 km/sa","expected":"beş kilometre saat","kind":"Unit"},
+  {"id":"rate-copula","class":"rate","text":"5 km/sa'tir","expected":"beş kilometre saattir","kind":"Unit"}
+]

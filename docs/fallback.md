@@ -20,6 +20,20 @@ separate immutable `fallbacks` diagnostics with original UTF-8 ranges. The
 does not certify factual truth, account/checksum validity, privacy or model
 vocabulary/pronunciation compatibility.
 
+Expanded numeric/quantity/date grammar, clock ranges, multiplication and
+contextual address fields use primary readings in every policy. Fallback is
+not required to get those valid readings and does not repair a rejected suffix.
+An address field is atomic, while a multiplication chain is validated as a
+whole before any operand is emitted. Valid neighboring address fields can
+normalize when another field fails.
+
+Primary composite readings can contain multiple source-partitioning segments.
+That does not permit hints to cut their validated owner. Corrected account
+ownership likewise prevents a trailing numeric group from escaping as an
+ordinal or money reading. Fallback cannot certify an invalid account prefix.
+New grammatical analyses that disagree on final speech remain ambiguous;
+established successful ordinary-case readings retain documented precedence.
+
 Fallback-generated segments have kind `Fallback` / `"fallback"` and a
 `source.fallback` rule identifier. The strategy is carried in the diagnostic.
 Invalid source-shaped dates or identifiers are never labelled as validated

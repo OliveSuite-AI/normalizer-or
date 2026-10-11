@@ -26,7 +26,8 @@ pub(super) fn groups(
         if matched.start() < covered {
             continue;
         }
-        let Some(range) = expression_range(matched.as_str(), matched.start(), quotes) else {
+        let Some(range) = expression_range(matched.as_str(), matched.start(), quotes, control)?
+        else {
             continue;
         };
         let raw = &text[range.start..range.end];

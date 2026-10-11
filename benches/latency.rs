@@ -6,32 +6,16 @@ use serde_json::{Value, json};
 
 #[path = "../tests/support/policy_contract.rs"]
 mod policy_fixtures;
+#[path = "latency/recognition_scaling.rs"]
+mod recognition_scaling;
 
 fn options(case: &Value, policy: AmbiguityPolicy) -> NormalizeOptions {
     let mut options = NormalizeOptions {
         ambiguity_policy: policy,
         ..Default::default()
     };
-    if let Some(hint) = case.get("hint") {
-        let kind = match hint["kind"].as_str().unwrap() {
-            "cardinal" => HintKind::Cardinal,
-            "digits" => HintKind::Digits,
-            "date" => HintKind::Date,
-            "time" => HintKind::Time,
-            "ordinal" => HintKind::Ordinal,
-            "roman" => HintKind::Roman,
-            "range" => HintKind::Range,
-            "telephone" => HintKind::Telephone,
-            "electronic" => HintKind::Electronic,
-            _ => panic!("frozen corpus hint is unsupported"),
-        };
-        options.hints.push(Hint::new(
-            SourceRange::new(
-                hint["start"].as_u64().unwrap() as usize,
-                hint["end"].as_u64().unwrap() as usize,
-            ),
-            kind,
-        ));
+    if let Some(hint) = policy_fixtures::hint(case) {
+        options.hints.push(hint);
     }
     options
 }
@@ -250,11 +234,26 @@ fn policy_contract_measurements(normalizer: &Normalizer) -> Value {
             ("malformed-dot-token", "1."),
             ("mixed-quantity-list", "25kg;CHP,AKP; "),
             ("rejected-phrase-list", "Claude,Hugging Face,UNKNOWN; "),
+            ("number-tail", "2026'dakidir; "),
+            ("quantity-possession", "25,50 TL'm; "),
+            ("rate-tail", "5 km/sa'tir; "),
+            ("clock-range", "13:00-17:00 arasında; "),
+            ("date-source-tail", "tarih 2026-12-31'de; "),
+            ("account-period", "TR33 0006 1005 1978 6457 8413 26.; "),
+            (
+                "account-malformed-continuation",
+                "TR33 0006 1005 1978 6457 8413 26 00abc; ",
+            ),
+            ("address-fields", "Kat:3 Daire:7; adres: "),
+            ("address-invalid-field", "Kat:xyz; adres: "),
+            ("multiplication-chain", "*1"),
+            ("multiplication-invalid-chain", "1**"),
         ] {
-            let prefix = if class == "pronunciation-long-tail" {
-                "iPhone'"
-            } else {
-                ""
+            let prefix = match class {
+                "pronunciation-long-tail" => "iPhone'",
+                "address-fields" | "address-invalid-field" => "adres: ",
+                "multiplication-chain" => "1",
+                _ => "",
             };
             let remaining = size - prefix.len();
             let mut text = String::with_capacity(size);
@@ -474,6 +473,7 @@ fn main() {
         "snapshots":snapshots,
         "fallback_measurement":fallback_measurements(&normalizer, &corpus),
         "expanded_coverage_measurement":policy_contract_measurements(&normalizer),
+        "reviewed_recognition_scaling":recognition_scaling::measure(&normalizer),
     });
     use std::io::Write;
     let mut file = std::fs::OpenOptions::new()

@@ -101,10 +101,6 @@ fn hint_ranges_are_original_non_overlapping_grapheme_safe_whole_expressions() {
             vec![Hint::new(SourceRange::new(0, 5), HintKind::Time)],
         ),
         (
-            "2026-03-14'te",
-            vec![Hint::new(SourceRange::new(0, 13), HintKind::Date)],
-        ),
-        (
             "+90 532 123",
             vec![Hint::new(SourceRange::new(0, 3), HintKind::Digits)],
         ),

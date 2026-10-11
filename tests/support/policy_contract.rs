@@ -1,6 +1,30 @@
 //! Shared, compiled policy fixtures with explicit deterministic catalog order.
+use normalizer_tr::{Hint, HintKind, SourceRange};
 use serde_json::Value;
 use std::collections::BTreeSet;
+
+pub fn hint(case: &Value) -> Option<Hint> {
+    let hint = case.get("hint")?;
+    let kind = match hint["kind"].as_str().unwrap() {
+        "cardinal" => HintKind::Cardinal,
+        "digits" => HintKind::Digits,
+        "date" => HintKind::Date,
+        "time" => HintKind::Time,
+        "ordinal" => HintKind::Ordinal,
+        "roman" => HintKind::Roman,
+        "range" => HintKind::Range,
+        "telephone" => HintKind::Telephone,
+        "electronic" => HintKind::Electronic,
+        other => panic!("unsupported fixture hint {other}"),
+    };
+    Some(Hint::new(
+        SourceRange::new(
+            hint["start"].as_u64().unwrap() as usize,
+            hint["end"].as_u64().unwrap() as usize,
+        ),
+        kind,
+    ))
+}
 
 const CATALOG: &str = include_str!("../fixtures/policy-contract.json");
 const GROUPS: &[(&str, &str)] = &[
@@ -84,6 +108,22 @@ const GROUPS: &[(&str, &str)] = &[
         "policy-contract/pronunciation-nominal.json",
         include_str!("../fixtures/policy-contract/pronunciation-nominal.json"),
     ),
+    (
+        "policy-contract/numeric-tails.json",
+        include_str!("../fixtures/policy-contract/numeric-tails.json"),
+    ),
+    (
+        "policy-contract/temporal-notation.json",
+        include_str!("../fixtures/policy-contract/temporal-notation.json"),
+    ),
+    (
+        "policy-contract/composite-notation.json",
+        include_str!("../fixtures/policy-contract/composite-notation.json"),
+    ),
+    (
+        "policy-contract/review-notation-admission.json",
+        include_str!("../fixtures/policy-contract/review-notation-admission.json"),
+    ),
 ];
 
 pub fn load() -> (Vec<Value>, usize) {
@@ -105,6 +145,7 @@ pub fn load() -> (Vec<Value>, usize) {
     }
     let mut ids = BTreeSet::new();
     for case in &cases {
+        let _ = hint(case);
         assert!(
             ids.insert(case["id"].as_str().unwrap()),
             "duplicate policy-contract case"

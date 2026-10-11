@@ -2,7 +2,7 @@
 pub(crate) fn suffix_parts(text: &str) -> Option<(&str, Vec<&str>)> {
     let mut parts = text.split(['\'', '’']);
     let base = parts.next()?;
-    let suffixes: Vec<_> = parts.collect();
+    let suffixes: Vec<_> = parts.take(3).collect();
     if suffixes.len() > 2 || suffixes.iter().any(|s| s.is_empty()) {
         return None;
     }

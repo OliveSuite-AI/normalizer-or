@@ -24,6 +24,8 @@ pub(super) struct Token<'a> {
     pub(super) range: SourceRange,
     pub(super) text: &'a str,
     pub(super) number_run_end: usize,
+    pub(super) phone_run_end: usize,
+    pub(super) digit_end: usize,
 }
 
 pub(super) struct Scanned<'a> {
@@ -81,7 +83,7 @@ pub(super) fn tokens<'a>(
             );
             continue;
         }
-        let Some(range) = expression_range(raw, matched.start(), &quotes) else {
+        let Some(range) = expression_range(raw, matched.start(), &quotes, control)? else {
             continue;
         };
         if crate::domain::electronic::looks_like(&text[range.start..range.end])
@@ -162,9 +164,17 @@ pub(super) fn tokens<'a>(
             append_token(&mut tokens, source, range);
         }
     }
+    account_periods(text, &mut tokens, control)?;
+    let mut digits = 0;
+    for token in &mut tokens {
+        control.check()?;
+        digits += token.text.bytes().filter(u8::is_ascii_digit).count();
+        token.digit_end = digits;
+    }
     for index in (0..tokens.len()).rev() {
         control.check()?;
         tokens[index].number_run_end = index;
+        tokens[index].phone_run_end = index;
         if let Some(next) = tokens.get(index + 1)
             && number_fragment(tokens[index].text)
             && number_fragment(next.text)
@@ -172,11 +182,58 @@ pub(super) fn tokens<'a>(
         {
             tokens[index].number_run_end = next.number_run_end;
         }
+        if let Some(next) = tokens.get(index + 1)
+            && signals::telephone_group(next.text)
+            && text[tokens[index].range.end..next.range.start]
+                .chars()
+                .all(|ch| ch.is_whitespace() || matches!(ch, '(' | ')' | '-'))
+        {
+            tokens[index].phone_run_end = next.phone_run_end;
+        }
     }
     Ok(Scanned {
         tokens,
         catalog_groups,
     })
+}
+
+fn account_periods(
+    text: &str,
+    tokens: &mut [Token<'_>],
+    control: &WorkControl,
+) -> Result<(), NormalizeError> {
+    let mut account = false;
+    let mut previous_end = 0;
+    for token in tokens {
+        control.check()?;
+        let adjacent =
+            previous_end == 0 || whitespace_between(text, previous_end, token.range.start);
+        let start = token.text.len() >= 4
+            && (token.text.starts_with("TR") || token.text.starts_with("tr"))
+            && token.text.as_bytes()[2..].iter().all(u8::is_ascii_digit);
+        if start || token.text == "TR" {
+            account = true;
+        } else if account && adjacent {
+            if let Some(body) = token.text.strip_suffix('.')
+                && !body.is_empty()
+                && body.bytes().all(|byte| byte.is_ascii_digit())
+            {
+                token.text = body;
+                token.range.end -= 1;
+                account = false;
+            } else if !token
+                .text
+                .bytes()
+                .all(|byte| byte.is_ascii_digit() || byte.is_ascii_uppercase())
+            {
+                account = false;
+            }
+        } else {
+            account = false;
+        }
+        previous_end = token.range.end;
+    }
+    Ok(())
 }
 
 fn approved(groups: &[CatalogGroup], offset: usize) -> bool {
@@ -192,5 +249,54 @@ fn append_token<'a>(tokens: &mut Vec<Token<'a>>, source: &'a SourceMap, range: S
         range,
         text: &source.text()[range.start..range.end],
         number_run_end: 0,
+        phone_run_end: 0,
+        digit_end: 0,
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn indexed_phone_groups_match_local_traversal_and_prefix_digit_counts() {
+        let rules = Resources::load().unwrap();
+        let control = WorkControl::default();
+        for text in [
+            "01 1 01 1",
+            "+90 555 123 45 67",
+            "0850 (222) 33-44",
+            "telefon 555\t123\n45 67",
+            "01 1a 12345b 3 4",
+            "0 555 123 45 67; 5 kg",
+            "TR33 0006 1005 1978 6457 8413 26.",
+        ] {
+            let source = SourceMap::new(text, &control).unwrap();
+            let scanned = tokens(&source, &rules, &control).unwrap();
+            let tokens = scanned.tokens;
+            for index in 0..tokens.len() {
+                let mut end = index;
+                while let Some(next) = tokens.get(end + 1) {
+                    if !signals::telephone_group(next.text)
+                        || !text[tokens[end].range.end..next.range.start]
+                            .chars()
+                            .all(|ch| ch.is_whitespace() || matches!(ch, '(' | ')' | '-'))
+                    {
+                        break;
+                    }
+                    end += 1;
+                }
+                assert_eq!(tokens[index].phone_run_end, end, "{text}");
+                for limit in index..=end {
+                    let indexed = tokens[limit].digit_end
+                        - index.checked_sub(1).map_or(0, |i| tokens[i].digit_end);
+                    let actual = text[tokens[index].range.start..tokens[limit].range.end]
+                        .bytes()
+                        .filter(u8::is_ascii_digit)
+                        .count();
+                    assert_eq!(indexed, actual, "{text}");
+                }
+            }
+        }
+    }
 }

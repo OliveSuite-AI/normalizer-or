@@ -63,9 +63,9 @@ fn explicitly_allowed_unit_aliases_area_volume_rates() {
     ] {
         complete(&format!("2 {symbol}"), &format!("iki {word}"));
     }
-    complete("90 km/sa", "saatte doksan kilometre");
-    complete("90 km/h", "saatte doksan kilometre");
-    complete("5 m/s", "saniyede beş metre");
+    complete("90 km/sa", "doksan kilometre saat");
+    complete("90 km/h", "doksan kilometre saat");
+    complete("5 m/s", "beş metre saniye");
     complete("-0,05 ml'den", "eksi sıfır virgül sıfır beş mililitreden");
     complete("5 m²'ye", "beş metrekareye");
     complete("5 m³'e", "beş metrekübe");

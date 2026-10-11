@@ -1,3 +1,4 @@
+pub(crate) mod composite;
 pub(crate) mod electronic;
 pub(crate) mod identifiers;
 pub(crate) mod lexicon;

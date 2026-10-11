@@ -1,5 +1,5 @@
 use crate::{
-    SegmentKind,
+    NormalizeError, SegmentKind,
     domain::lexicon::{Lexeme, MONTHS},
     domain::temporal::{Clock, Date},
     interpretation::Value,
@@ -29,15 +29,14 @@ pub(crate) fn time_spoken(time: Clock) -> Spoken {
     }
 }
 
-pub(crate) fn render(value: &Value) -> (SegmentKind, &'static str, String) {
-    match value {
+pub(crate) fn render(value: &Value) -> Result<(SegmentKind, &'static str, String), NormalizeError> {
+    Ok(match value {
+        Value::Composite(_) => return Err(NormalizeError::Internal),
         Value::Numeric(number) => (number.kind(), "number", number.render().into_text()),
         Value::Digits(text) => (SegmentKind::Digits, "digits.hint", numerals::digits(text)),
-        Value::Date(date, locative) => {
+        Value::Date(date, tail) => {
             let mut spoken = date_spoken(*date);
-            if *locative {
-                spoken.inflect(Inflection::Locative);
-            }
+            tail.apply(&mut spoken);
             (SegmentKind::Date, "date.gregorian", spoken.into_text())
         }
         Value::Time(time, locative) => {
@@ -50,7 +49,7 @@ pub(crate) fn render(value: &Value) -> (SegmentKind, &'static str, String) {
         Value::Percent(number, case) => {
             let mut spoken = numerals::number(number);
             if let Some(case) = case {
-                spoken.inflect(*case);
+                case.apply(&mut spoken);
             }
             spoken.prefix("yüzde ");
             (SegmentKind::Percent, "percent", spoken.into_text())
@@ -78,6 +77,16 @@ pub(crate) fn render(value: &Value) -> (SegmentKind, &'static str, String) {
             ),
         ),
         Value::Range(range) => (SegmentKind::Range, "range.context", range.render()),
+        Value::ClockRange(range) => (
+            SegmentKind::Range,
+            "range.clock",
+            format!(
+                "{} {} {}",
+                time_spoken(range.start()).into_text(),
+                range.connector(),
+                time_spoken(range.end()).into_text()
+            ),
+        ),
         Value::Telephone(phone) => (SegmentKind::Telephone, "telephone.tr", phone.render()),
         Value::Iban(iban) => (SegmentKind::Iban, "iban.tr.mod97", iban.render()),
         Value::Roman(number) => (
@@ -91,6 +100,29 @@ pub(crate) fn render(value: &Value) -> (SegmentKind, &'static str, String) {
             address.render().to_owned(),
         ),
         Value::Symbol(text) => (SegmentKind::Symbol, "symbol.prose", text.clone()),
+    })
+}
+
+pub(crate) fn render_component(
+    value: &crate::domain::composite::ComponentValue,
+) -> (SegmentKind, &'static str, String) {
+    use crate::domain::composite::ComponentValue;
+    match value {
+        ComponentValue::Numeric(number) => (number.kind(), "number", number.render().into_text()),
+        ComponentValue::Quantity(quantity) => (
+            if quantity.is_money() {
+                SegmentKind::Money
+            } else {
+                SegmentKind::Unit
+            },
+            "quantity",
+            quantity.render().into_text(),
+        ),
+        ComponentValue::Text {
+            kind,
+            rule_id,
+            text,
+        } => (*kind, rule_id, text.clone()),
     }
 }
 

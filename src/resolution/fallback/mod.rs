@@ -31,12 +31,12 @@ pub(crate) fn render(
             output.word(&date_surface(date))?;
             FallbackStrategy::SurfaceDate
         }
-        Alternative::Temporal(TemporalPreference::Date(date, locative)) => {
-            output.word(&verbalize::render(&Value::Date(*date, *locative)).2)?;
+        Alternative::Temporal(TemporalPreference::Date(date, tail)) => {
+            output.word(&verbalize::render(&Value::Date(*date, *tail))?.2)?;
             FallbackStrategy::PreferredDate
         }
         Alternative::Temporal(TemporalPreference::Time(clock, locative)) => {
-            output.word(&verbalize::render(&Value::Time(*clock, *locative)).2)?;
+            output.word(&verbalize::render(&Value::Time(*clock, *locative))?.2)?;
             FallbackStrategy::PreferredTime
         }
         Alternative::Time(time) => {

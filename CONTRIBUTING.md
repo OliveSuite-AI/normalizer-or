@@ -35,6 +35,7 @@ Core/binding development needs no Torch, model files or credentials.
 | `src/api` | Public contract behind crate-root re-exports |
 | `src/classify` | Fixed reader priority, validation and whole-span claims; `scan` separates tokenization/indexing, punctuation and signals |
 | `src/domain` | Validated numeric, quantity, temporal, electronic and identifier values |
+| `src/domain/quantities.rs`, `src/domain/quantities/percentage.rs`, `src/domain/quantities/range.rs` | Quantity parsing/source-target realization, percentage grammar, and contextual numeric ranges behind stable private re-exports |
 | `src/domain/lexicon` | Approved abbreviation/name catalogs and shared compile-time lookup indexes; typed spoken tails remain in the domain |
 | `src/notation` | Shared written-form helpers, explicit character names and noncertifying source surfaces |
 | `src/interpretation.rs` | Neutral findings retaining their family, original issue and prevalidated alternatives |
@@ -42,6 +43,12 @@ Core/binding development needs no Torch, model files or credentials.
 | `src/numerals.rs`, `src/morphology.rs`, `src/verbalize.rs` | Exact rendering and spoken-tail metadata |
 | `src/morphology/nominal.rs` | Private bounded name inflection, current-stem transitions and borrowed suffix matching |
 | `src/morphology/nominal/tests.rs` | Nominal unit goldens, state transitions, invalid tails and finite-form consistency |
+| `src/morphology/tails.rs` | Shared bounded numeric/quantity/date tail descriptor and grammar limits |
+| `src/morphology/tails/analysis.rs`, `src/morphology/tails/realization.rs` | Finite suffix admission/selection and borrowed target realization, sharing terminal transitions |
+| `src/domain/composite.rs`, `src/classify/readers/products.rs` | Nonrecursive validated constituents and atomic flat multiplication recognition |
+| `src/classify/addresses.rs` | Frame-local address context, cross-field guards and collection orchestration |
+| `src/classify/addresses/lexicon.rs`, `src/classify/addresses/fields.rs`, `src/classify/addresses/emission.rs` | Reviewed address vocabulary, structural field parsing/validation, and atomic constituent emission |
+| `src/classify/addresses/scan.rs`, `src/classify/addresses/tests.rs` | Address-local source scanning and isolated ownership regressions |
 | `src/source_map.rs` | NFC recognition mapped to original UTF-8/grapheme coordinates |
 | `src/resources.rs` | Immutable patterns validated and cached once, not input/result memoization |
 | `src/pipeline.rs` | Source composition, diagnostics, adjacency padding and allocation budgets; aggregate Reject after engineering checks |
@@ -72,12 +79,16 @@ guessing casing or meanings. Test all approved case families, invalid suffix
 ownership, mixed prose, protected identifiers, phrase boundaries and original
 Unicode coordinates. Text goldens are not speech-model/audio validation.
 
-The scanner indexes numeric-run ends once for bounded money lookahead and
+The scanner indexes numeric/phone-run ends and prefix digit counts once for
+bounded lookahead and
 distinguishes paired quotation boundaries from suffix apostrophes. Keep
 recognition separate from strict value validation and share typed label metadata.
 Its incremental piece signals and complete tight-list admission stay separate
 from domain parsing and rendering. Rejecting a group must not invent candidates
 or hide genuine unresolved findings; source admission belongs with boundary claims.
+Queued independent address fields bound reader lookahead. Do not discard stale
+owners to recover from a conflicting claim. Electronic trimming counts
+parentheses once and updates the count while trimming, with cooperative checks.
 
 ## Change rules and tests
 
@@ -100,6 +111,13 @@ same catalog. Add cross-feature cases and exercise Preserve, Reject and Fallback
 independently. Do not alter the frozen benchmark inputs/order to improve an aggregate.
 Append new groups and retain existing case IDs and order. Change expected
 outputs only for intentional behavior changes documented in the changelog.
+
+Whole-source validation is separate from constituent primary emission.
+Components retain original grapheme-safe ranges and must partition their owner.
+Inserted spoken labels attach to an existing nonempty component; altered text
+is not Verbatim. Every semantic constituent counts as work and every output
+record is charged to the logical result budget. Malformed product owners remain
+atomic; address failures are atomic at the field, not the whole address.
 `tests/support/policy_contract.rs` supplies the Rust loader; Python consumers
 flatten the files in catalog order and fingerprint every input. The report key
 `expanded_coverage_measurement` is retained for compatibility, not a second

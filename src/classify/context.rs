@@ -1,4 +1,5 @@
 pub(super) const DATE_CUES: &[&str] = &["tarih", "tarihi"];
+pub(super) const FOLLOWING_DATE_CUES: &[&str] = &["tarihinde", "tarihine"];
 pub(super) const TIME_CUES: &[&str] = &["saat"];
 
 /// Casing and optional colon removal apply only to reviewed lookup keys.

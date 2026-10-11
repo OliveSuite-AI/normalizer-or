@@ -1,7 +1,7 @@
 //! Exact number interpretations, ordinals and canonical Roman values.
 use crate::{
     IssueCategory, SegmentKind,
-    morphology::{Inflection, Spoken, integer_inflection, spoken_case},
+    morphology::{Inflection, Spoken, TailInflection},
     notation::{split_suffix, suffix_parts},
     numerals::{self, Number},
 };
@@ -10,7 +10,7 @@ use crate::{
 pub(crate) struct Numeric {
     number: Number,
     ordinal: bool,
-    case: Option<Inflection>,
+    tail: Option<TailInflection>,
 }
 
 pub(crate) enum NumericPreference {
@@ -37,8 +37,9 @@ impl Numeric {
         if text.chars().any(|c| c.is_numeric() && !c.is_ascii_digit()) {
             return Err(IssueCategory::Unsupported.into());
         }
-        if let Some(value) = Self::parse(text, false) {
-            return Ok(value);
+        // Explicit ordinal syntax has its own bounded two-apostrophe profile.
+        if text.matches(['\'', '’']).count() == 2 {
+            return Self::parsed(text, false, false, false).map_err(Into::into);
         }
         let (base, suffix) = split_suffix(text).ok_or(IssueCategory::InvalidExpression)?;
         if base.ends_with('.') && suffix.is_none() {
@@ -54,125 +55,118 @@ impl Numeric {
                 },
             );
         }
-        let number = Number::parse(base).ok_or(IssueCategory::InvalidExpression)?;
-        if number.grouped() {
-            let case = suffix.map_or(Some(None), |suffix| {
-                number
-                    .fraction()
-                    .is_empty()
-                    .then(|| integer_inflection(&numerals::number(&number), suffix))
-                    .flatten()
-                    .map(Some)
-            });
+        let parsed = match Self::parsed(text, false, true, false) {
+            Ok(parsed) => parsed,
+            Err(_) if Number::parse(base).is_some_and(|number| number.grouped()) => {
+                return Err(NumericFailure {
+                    category: IssueCategory::Ambiguous,
+                    preference: None,
+                });
+            }
+            Err(category) => return Err(category.into()),
+        };
+        if parsed.number.grouped() {
             return Err(NumericFailure {
                 category: IssueCategory::Ambiguous,
-                preference: case.map(|case| {
-                    NumericPreference::Number(Self {
-                        number,
-                        ordinal: case == Some(Inflection::Ordinal),
-                        case: case.filter(|family| *family != Inflection::Ordinal),
-                    })
-                }),
+                preference: Some(NumericPreference::Number(parsed)),
             });
         }
-        let case = if let Some(suffix) = suffix {
-            if !number.fraction().is_empty() {
-                return Err(IssueCategory::Unsupported.into());
-            }
-            Some(
-                integer_inflection(&numerals::number(&number), suffix)
-                    .ok_or(IssueCategory::InvalidExpression)?,
-            )
-        } else {
-            None
-        };
-        Ok(Self {
-            number,
-            ordinal: false,
-            case,
-        })
+        Ok(parsed)
     }
     pub(crate) fn cardinal_hint(text: &str) -> Option<Self> {
-        let (base, suffix) = split_suffix(text)?;
-        let number = Number::parse_cardinal_hint(base)?;
-        if !number.fraction().is_empty() {
-            return None;
-        }
-        let family = suffix.map_or(Some(None), |s| {
-            integer_inflection(&numerals::number(&number), s).map(Some)
-        })?;
-        Some(Self {
-            number,
-            ordinal: family == Some(Inflection::Ordinal),
-            case: family.filter(|f| *f != Inflection::Ordinal),
-        })
+        let parsed = Self::parsed(text, false, true, true).ok()?;
+        parsed.number.fraction().is_empty().then_some(parsed)
     }
     pub(crate) fn parse(text: &str, ordinal_hint: bool) -> Option<Self> {
-        let (base, suffixes) = suffix_parts(text)?;
+        Self::parsed(text, ordinal_hint, false, false).ok()
+    }
+    pub(crate) fn product_operand(text: &str) -> Option<Self> {
+        Self::parsed(text, false, true, false).ok()
+    }
+    pub(crate) fn is_count(&self) -> bool {
+        self.number.sign() != numerals::Sign::Minus && self.number.fraction().is_empty()
+    }
+    fn parsed(
+        text: &str,
+        ordinal_hint: bool,
+        allow_grouped: bool,
+        padding: bool,
+    ) -> Result<Self, IssueCategory> {
+        let invalid = IssueCategory::InvalidExpression;
+        let (base, suffixes) = suffix_parts(text).ok_or(invalid)?;
         let period = base.ends_with('.');
         if ordinal_hint && !period && suffixes.is_empty() {
-            return None;
+            return Err(invalid);
         }
         let body = if period {
             &base[..base.len() - 1]
         } else {
             base
         };
-        let number = Number::parse(body)?;
-        if !number.fraction().is_empty() || number.grouped() {
-            return None;
+        let number = if padding {
+            Number::parse_cardinal_hint(body)
+        } else {
+            Number::parse(body)
         }
-        let mut spoken = numerals::number(&number);
-        let ordinal;
-        let case;
+        .ok_or(invalid)?;
+        if number.grouped() && !allow_grouped {
+            return Err(invalid);
+        }
+        let source = number.tail();
+        let mut ordinal = false;
+        let tail;
         if period {
             if suffixes.is_empty() && !ordinal_hint {
-                return None;
+                return Err(invalid);
             }
-            if suffixes.len() > 1 {
-                return None;
+            if suffixes.len() > 1 || !number.fraction().is_empty() || number.grouped() {
+                return Err(invalid);
             }
-            spoken.inflect(Inflection::Ordinal);
             ordinal = true;
-            case = suffixes
+            tail = suffixes
                 .first()
-                .map_or(Some(None), |s| spoken_case(&spoken, s).map(Some))?;
+                .map(|s| {
+                    TailInflection::select(
+                        source.inflected(Inflection::Ordinal),
+                        s,
+                        source.inflected(Inflection::Ordinal),
+                    )
+                })
+                .transpose()?;
         } else if let Some(first) = suffixes.first() {
-            let first_family = if let Some(family) = integer_inflection(&spoken, first) {
-                family
-            } else {
-                if suffixes.len() != 1 {
-                    return None;
-                }
-                let ordinal_suffix = spoken.source_suffix(Inflection::Ordinal);
-                let remaining = first.strip_prefix(&ordinal_suffix)?;
-                spoken.inflect(Inflection::Ordinal);
-                return Some(Self {
-                    number,
-                    ordinal: true,
-                    case: Some(spoken_case(&spoken, remaining)?),
-                });
-            };
-            ordinal = first_family == Inflection::Ordinal;
-            if ordinal {
-                spoken.inflect(Inflection::Ordinal);
-                case = suffixes
-                    .get(1)
-                    .map_or(Some(None), |s| spoken_case(&spoken, s).map(Some))?;
+            if let Some(remaining) = number
+                .fraction()
+                .is_empty()
+                .then(|| source.strip_suffix_prefix(Inflection::Ordinal, first))
+                .flatten()
+            {
+                ordinal = true;
+                let target = source.inflected(Inflection::Ordinal);
+                tail = if remaining.is_empty() {
+                    suffixes
+                        .get(1)
+                        .map(|s| TailInflection::select(target, s, target))
+                        .transpose()?
+                } else {
+                    if suffixes.len() != 1 {
+                        return Err(invalid);
+                    }
+                    Some(TailInflection::select(target, remaining, target)?)
+                };
             } else {
                 if ordinal_hint || suffixes.len() != 1 {
-                    return None;
+                    return Err(invalid);
                 }
-                case = Some(first_family);
+                tail = Some(TailInflection::select(source, first, source)?);
             }
         } else {
             ordinal = ordinal_hint;
-            case = None;
+            tail = None;
         }
-        Some(Self {
+        Ok(Self {
             number,
             ordinal,
-            case,
+            tail,
         })
     }
     pub(crate) fn roman(text: &str) -> Option<Self> {
@@ -199,8 +193,8 @@ impl Numeric {
         if self.ordinal {
             spoken.inflect(Inflection::Ordinal);
         }
-        if let Some(case) = self.case {
-            spoken.inflect(case);
+        if let Some(tail) = self.tail {
+            tail.apply(&mut spoken);
         }
         spoken
     }
@@ -267,3 +261,6 @@ fn roman_value(text: &str) -> Option<u16> {
     }
     (canonical == text).then_some(total as u16)
 }
+
+#[cfg(test)]
+mod tests;

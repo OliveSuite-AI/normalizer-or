@@ -29,7 +29,7 @@ pub enum SegmentKind {
     Time,
     /// Approved abbreviation.
     Abbreviation,
-    /// Contextual or explicitly hinted numerical range.
+    /// Contextual or explicitly hinted numeric range, or validated clock range.
     Range,
     /// Grouped Turkish telephone expression.
     Telephone,
@@ -39,7 +39,7 @@ pub enum SegmentKind {
     Roman,
     /// Supported email or web address.
     Electronic,
-    /// Approved prose hashtag or ampersand.
+    /// Approved prose symbol, multiplication operator, or contextual separator.
     Symbol,
     /// Source-faithful fallback, not certification of the source value.
     Fallback,
