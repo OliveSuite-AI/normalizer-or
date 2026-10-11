@@ -37,9 +37,7 @@ pub(super) fn read(ctx: &Context<'_>, index: usize) -> Option<Attempt> {
         return Some(finish(
             ctx,
             end,
-            prefixed_quantity(number, source)
-                .map(Value::Quantity)
-                .ok_or(IssueCategory::InvalidExpression),
+            prefixed_quantity(number, source).map(Value::Quantity),
         ));
     }
     if let Some(end) = ctx.money_end(index) {
@@ -51,14 +49,9 @@ pub(super) fn read(ctx: &Context<'_>, index: usize) -> Option<Attempt> {
             }
             let number = &text[token.range.start..label.range.start + last.len()];
             let quantity = split_suffix(label.text)
+                .ok_or(IssueCategory::InvalidExpression)
                 .and_then(|(_, suffix)| Quantity::parse_with_suffix(number, currency, suffix));
-            return Some(finish(
-                ctx,
-                end,
-                quantity
-                    .map(Value::Quantity)
-                    .ok_or(IssueCategory::InvalidExpression),
-            ));
+            return Some(finish(ctx, end, quantity.map(Value::Quantity)));
         }
         if Currency::parse(base).is_none() {
             return Some(finish(ctx, end, Err(IssueCategory::Unsupported)));
@@ -67,9 +60,7 @@ pub(super) fn read(ctx: &Context<'_>, index: usize) -> Option<Attempt> {
         return Some(finish(
             ctx,
             end,
-            Quantity::parse(number, label.text)
-                .map(Value::Quantity)
-                .ok_or(IssueCategory::InvalidExpression),
+            Quantity::parse(number, label.text).map(Value::Quantity),
         ));
     }
     if let Some((number, label)) = notation::attached_quantity(source) {
@@ -91,32 +82,23 @@ pub(super) fn read(ctx: &Context<'_>, index: usize) -> Option<Attempt> {
             return Some(finish(
                 ctx,
                 end,
-                prefixed_quantity(body, label)
-                    .map(Value::Quantity)
-                    .ok_or(IssueCategory::InvalidExpression),
+                prefixed_quantity(body, label).map(Value::Quantity),
             ));
         }
         let quantity = split_suffix(source)
+            .ok_or(IssueCategory::InvalidExpression)
             .and_then(|(_, suffix)| Quantity::parse_with_suffix(number, label, suffix));
-        return Some(finish(
-            ctx,
-            index,
-            quantity
-                .map(Value::Quantity)
-                .ok_or(IssueCategory::InvalidExpression),
-        ));
+        return Some(finish(ctx, index, quantity.map(Value::Quantity)));
     }
     let next = next?;
     if notation::label(next.text) && source.chars().any(|c| c.is_ascii_digit()) {
         return Some(finish(
             ctx,
             index + 1,
-            Quantity::parse(source, next.text)
-                .map(Value::Quantity)
-                .ok_or(IssueCategory::InvalidExpression),
+            Quantity::parse(source, next.text).map(Value::Quantity),
         ));
     }
-    if source.chars().any(|c| c.is_ascii_digit())
+    if number_shaped(source)
         && (lexicon::unit_marker(next.text)
             || (next.text.starts_with(char::is_alphabetic)
                 && (next.text.contains(['/', '^', '²', '³'])
@@ -127,9 +109,17 @@ pub(super) fn read(ctx: &Context<'_>, index: usize) -> Option<Attempt> {
     None
 }
 
-fn prefixed_quantity(number: &str, label: &str) -> Option<Quantity> {
+fn number_shaped(source: &str) -> bool {
+    let base = source.split(['\'', '’']).next().unwrap_or(source);
+    base.bytes().any(|b| b.is_ascii_digit())
+        && base
+            .chars()
+            .all(|ch| ch.is_ascii_digit() || matches!(ch, '+' | '-' | ',' | '.'))
+}
+
+fn prefixed_quantity(number: &str, label: &str) -> Result<Quantity, IssueCategory> {
     if matches!(label, "₺" | "$" | "€" | "£") {
-        let (body, suffix) = split_suffix(number)?;
+        let (body, suffix) = split_suffix(number).ok_or(IssueCategory::InvalidExpression)?;
         Quantity::parse_with_suffix(body, label, suffix)
     } else {
         Quantity::parse(number, label)

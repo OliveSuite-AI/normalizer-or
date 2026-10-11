@@ -105,6 +105,8 @@ pub(crate) struct Iban {
 }
 
 impl Iban {
+    pub(crate) const CHARACTERS: usize = 26;
+
     pub(crate) fn parse(text: &str) -> Option<Self> {
         let groups: Vec<_> = text.split(' ').collect();
         if groups.iter().any(|g| g.is_empty()) {
@@ -118,7 +120,7 @@ impl Iban {
             return None;
         }
         let canonical = groups.concat();
-        if canonical.len() != 26
+        if canonical.len() != Self::CHARACTERS
             || !canonical.starts_with("TR")
             || !canonical[2..].bytes().all(|b| b.is_ascii_digit())
         {

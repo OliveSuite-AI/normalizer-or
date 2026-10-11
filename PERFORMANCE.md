@@ -63,7 +63,7 @@ Policy-contract measurements retain the existing `expanded_coverage_measurement`
 JSON key for report compatibility without changing the frozen inputs, original
 aggregate/order or existing report fields. Reviewed cases come from
 `tests/fixtures/policy-contract.json`, shared with Rust/Python tests.
-It contains 198 cases in ordered fixture groups. Existing IDs, order and
+It contains 225 cases in ordered fixture groups. Existing IDs, order and
 unrelated expected outcomes are preserved; new nominal cases are appended.
 The two Instagram/WhatsApp output expectations deliberately change as described
 in the [0.6.0 migration notes](CHANGELOG.md#060---2026-10-11). Python fingerprints
@@ -88,6 +88,14 @@ The first process initialization is recorded separately from 100 later cached
 same-process constructor calls. Those later calls are **not cold starts**.
 Large 4/16/32 KiB inputs, maximum hints, candidate/result errors and long
 identifiers are separate scaling diagnostics, not 1 ms guarantees.
+
+Unreleased scaling cases cover numeric/copular tails, quantity possession,
+written-order rates, clocks/date tails, account periods, contextual address
+fields and long flat products. Source ownership and control checks are part of
+those workloads. Composite outputs charge each constituent, so reaching a limit
+with a long chain is a real measured outcome, not an omitted sample.
+Rate wording deliberately changes existing corpus outcomes without changing
+the corpus inputs; timings are not evidence of equivalent semantic work.
 
 ## Python and measurement limits
 

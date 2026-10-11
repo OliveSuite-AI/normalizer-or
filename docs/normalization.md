@@ -15,11 +15,21 @@ Magnitudes are strictly below `1_000_000_000_000_000_000`. Comma decimals have
 Explicit signs, including negative zero, are retained. Dot grouping must use
 valid three-digit groups; bare `1.234` remains ambiguous without intent.
 
-Integers, explicit ordinals and approved case/derivational suffixes share exact
-number and spoken-tail helpers. Written-form pronunciation, the target spoken
-stem and a derived stem are distinct: `25 TL'den` becomes `yirmi beş Türk
-lirasından`, while `1.'nin` becomes `birincinin`. Emitted text is never reparsed
-to infer suffixes. Arbitrary suffix chains and invalid allomorphs are unresolved.
+Numbers, percentages and approved quantities accept a finite suffix order:
+optional plural, optional possession (all six persons), optional case,
+optional `ki` after locative, then optional `dır/dir/dur/dür` or its voiceless
+counterpart. Each stage occurs at most once. Cases are accusative, dative,
+locative, ablative and genitive. Examples: `%20'si` -> `yüzde yirmisi`,
+`2026'daki` -> `iki bin yirmi altıdaki`, and `2026'dakidir` ->
+`iki bin yirmi altıdakidir`. Other tenses, repeated stages and further
+plural/case chains after `ki` are not inferred.
+
+Existing explicit ordinals and percent `lik/lık/luk/lük` readings remain.
+Written-form pronunciation and the target spoken stem are distinct:
+`25 TL'den` becomes `yirmi beş Türk lirasından`, while `1.'nin` becomes
+`birincinin`. Existing successful ordinary-case interpretations have explicit
+precedence; other new analyses must agree on their final speech or remain
+ambiguous. Emitted text is never reparsed to infer suffixes.
 
 Percentages accept prefix, spaced-prefix and trailing `%` with a valid exact
 number and the same supported suffix rules:
@@ -44,6 +54,14 @@ Zero minor units are omitted. Unknown or malformed currency expressions remain
 whole unresolved spans; see the
 [reviewed boundary regressions](#reviewed-boundary-regressions-050).
 
+Explicit possession replaces the compound ending in `Türk lirası`:
+`25 TL'm` -> `yirmi beş Türk liram` and `25 TL'lerim` ->
+`yirmi beş Türk liralarım`. Fractional amounts attach morphology to the last
+spoken minor unit: `25,50 TL'm` -> `yirmi beş Türk lirası elli kuruşum`.
+Likewise `600 TL'dir` reads `altı yüz Türk lirasıdır`, while `600,05 TL'dir`
+ends in `beş kuruştur`. Input suffixes are validated against the approved
+currency-label reading, not the expanded output.
+
 Supported currency labels may be compact or spaced: `25TL`, `25 TL`, `$25`,
 `$ 25` and `25$`. Currency context also permits space-grouped money such as
 `1 234,50 TL`, `$1 234,50` and `1 234,50TL`. The first group has 1-3 digits
@@ -58,7 +76,11 @@ Approved unit labels are exactly `kg`, `g`, `km`, `m`, `cm`, `mm`, `L`, `mL`,
 `mg`, `µg`, `μg`, `gr`, `ml`, `lt`, `dk`, `sn`, `sa`, `m²`, `cm²`, `km²`, `m³`,
 `°C`, `V`, `kW`, `kWh` and `GB`.
 Aliases are explicit: there is no arbitrary case-folding or NFKC expansion.
-Rates are only `km/sa`, `km/h` and `m/s`, using `saatte` / `saniyede`.
+Rates are only `km/sa`, `km/h` and `m/s`. They use written unit order:
+`5 km/sa` -> `beş kilometre saat`, `5 m/s` -> `beş metre saniye`.
+The denominator supplies the suffix tail: `5 km/sa'tir` ->
+`beş kilometre saattir`. This deliberately changes earlier `saatte` /
+`saniyede` readings; see the Unreleased migration notes.
 Number/label adjacency is supported: `5kg` -> `beş kilogram`.
 
 | Label | Reading in numeric quantity context |
@@ -74,27 +96,78 @@ against the approved spoken names: `75 kW'tan` -> `yetmiş beş kilovattan`;
 `10 kWh'ten` -> `on kilovat saatten`. `KW`/`kw`, arbitrary suffix chains and
 unapproved units remain unsupported.
 
-Ranges keep exact endpoint order and use compact or spaced `-` / `–` plus an
+Numeric ranges keep exact endpoint order and use compact or spaced `-` / `–` plus an
 approved unit or `kişi`, `adet`, `gün`, `yaş` context, or a whole Range hint. Bare `10-15`,
-mathematical subtraction/equations and date/time/currency ranges are not guessed.
+mathematical subtraction/equations and date/currency ranges are not guessed.
 `10 - 15 kişi` -> `on ila on beş kişi`.
 
 ## Dates, clocks and abbreviations
 
-Gregorian dates accept dotted day-month-year with a four-digit nonzero year, or
-unsuffixed ISO dates, or fixed `DD/MM/YYYY` slash dates. A `tarih` / `tarihi` cue,
-including its supported colon form, or a Date hint establishes intent. Clocks
-are valid 24-hour values with a `saat` cue or Time hint.
+Gregorian dates accept dotted day-month-year with a four-digit nonzero year,
+fixed ISO `YYYY-MM-DD`, `DD/MM/YYYY`, and `YYYY/MM/DD`. Valid year-first slash
+dates establish their own intent. Day-first dates retain their bounded
+`tarih` / `tarihi` cue, supported colon form or Date hint; exact following
+`tarihinde` / `tarihine` also supplies intent.
 `tarih 03/04/2026` -> `tarih üç Nisan iki bin yirmi altı`.
-Bare slash notation remains unresolved; Fallback reads its written components
+Bare day-first slash notation remains unresolved; Fallback reads its written components
 literally, not as a preferred/surface calendar date. US-order, two-digit-year
 and clock-seconds interpretation are unsupported.
 
-The bounded date-locative + whitespace + `saat` + whitespace + clock-locative
-frame is also recognized. Date locative uses the spoken year; clock locative
-uses the minute, or hour when `:00` elides minutes. Suffixed ISO/slash dates,
-arbitrary suffix chains and invalid calendar/clock values stay unresolved.
+All date formats accept five cases, locative-plus-`ki` and a final copula, but
+not whole-date possession/plural. Validate against the last written component
+and generate against the final spoken year: `tarih 2026-12-31'de` ->
+`tarih otuz bir Aralık iki bin yirmi altıda`. Invalid calendars and wrong
+source allomorphs remain unresolved.
+
+Clocks are valid 24-hour values using `:` or `.` with a `saat` cue or Time hint.
+A valid locative suffix also establishes dotted-clock intent:
+`14.30'da` -> `on dört otuzda`. Single bare dotted forms remain conservative.
+Clock locative follows the minute, or hour when zero minutes are elided:
+`14.00'te` is valid; `14.00'da` is not. The existing bounded
+date-locative + `saat` + clock-locative frame remains locative-only.
+
+Valid clock ranges establish intent with either separator and a compact or
+spaced hyphen/en dash. `13:00-17:00` reads `on üç ila on yedi`;
+before a following `arasında`, use `ile`. A whole Range hint uses the same rule.
+Equal/decreasing endpoints retain written order, without guessing a duration,
+next day or timetable validity. Seconds remain unsupported.
 `Toplam 25.` is not silently treated as an ordinal.
+
+### Multiplication
+
+Flat chains use `x`, `*` or `×` and are read, not calculated:
+`12*2*833,25 TL` -> `on iki çarpı iki çarpı sekiz yüz otuz üç Türk lirası
+yirmi beş kuruş`. Letter `x` requires surrounding whitespace; explicit
+symbols accept compact/spaced forms. Validated multiplication establishes
+grouping intent for `1.234 x 2`, without changing bare grouped numbers.
+
+Numeric-only chains use exact numbers. A count-quantity chain contains one
+approved money, measurement or rate operand and otherwise nonnegative integer
+counts. Grouping and labels belong to their whole operand. Parentheses, equations,
+other operators and multiple dimensional quantity operands are not inferred.
+Identifiers, phones and electronic text are not operands just because they
+contain digits. Failed chains own their whole source.
+
+### Address fields
+
+An explicit address cue with recognizable fields, or a reviewed multi-field
+pattern, establishes address context. Only there, `Mah./Mh.`, `Cad./Cd.`,
+`Sk./Sok.`, `No:`, `Kat:` and `D:/Daire:` have address meanings, including
+reviewed lower/title/uppercase spellings. Attached and spaced fields are equivalent.
+Unknown or malformed fields are handled atomically; valid neighbors can still
+normalize. This is neither geocoding nor a general address validator.
+
+Without another apartment field, `No:12/4` reads `bina numarası on iki,
+daire numarası dört`. With an explicit apartment field, preserve the compound
+as `numara on iki bölü dört` and read that separate field. Dotted numbered
+streets are ordinal: `245. Sk.` -> `iki yüz kırk beşinci sokak`.
+
+Identified five-digit postal codes read individually with leading zeros.
+Add `posta kodu` to a bare identified code, without duplicating a written label.
+An ordinary five-digit number outside the address context remains cardinal.
+Locality separators become a pause: `Kadıköy/İstanbul` -> `Kadıköy, İstanbul`.
+Names/order remain unchanged; no location dictionary or assignment lookup is used.
+These address-specific slash rules do not change email/URL readings.
 
 ### Abbreviations and initialisms
 

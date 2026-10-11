@@ -122,6 +122,13 @@ Deadlines/cancellation are cooperative, not hard call-duration limits; see
 
 ## Development and verification
 
+Unreleased core coverage includes bounded number/quantity tails, clock ranges,
+date suffixes, multiplication and contextual address fields. These use the
+same Python call and immutable records; no Python grammar is added.
+Composite primary values may emit several segments while keeping whole-expression
+hint protection. Review [migration notes](../../CHANGELOG.md#unreleased) for
+rate order, postal labels and changed source/diagnostic boundaries.
+
 See [CONTRIBUTING](../../CONTRIBUTING.md#set-up) for pinned development tools
 and installed-wheel tests. To build a release wheel after installing those tools:
 

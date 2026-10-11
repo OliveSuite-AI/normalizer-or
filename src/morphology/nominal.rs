@@ -10,7 +10,7 @@ const MAX_CASE_BYTES: usize = MAX_HIGH_VOWEL_BYTES + "nn".len();
 const MAX_SUFFIX_BYTES: usize = MAX_PLURAL_BYTES + MAX_POSSESSIVE_BYTES + MAX_CASE_BYTES;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum Possessor {
+pub(super) enum Possessor {
     FirstSingular,
     SecondSingular,
     ThirdSingular,
@@ -19,7 +19,7 @@ enum Possessor {
     ThirdPlural,
 }
 
-const POSSESSORS: [Option<Possessor>; 7] = [
+pub(super) const POSSESSORS: [Option<Possessor>; 7] = [
     None,
     Some(Possessor::FirstSingular),
     Some(Possessor::SecondSingular),
@@ -28,7 +28,7 @@ const POSSESSORS: [Option<Possessor>; 7] = [
     Some(Possessor::SecondPlural),
     Some(Possessor::ThirdPlural),
 ];
-const CASES: [Option<Inflection>; 6] = [
+pub(super) const CASES: [Option<Inflection>; 6] = [
     None,
     Some(Inflection::Accusative),
     Some(Inflection::Dative),
@@ -131,7 +131,7 @@ fn strip_parts(mut source: &str, parts: SuffixParts) -> Option<&str> {
     Some(source)
 }
 
-fn plural_stem(source: Word, plural: bool) -> (Word, SuffixParts) {
+pub(super) fn plural_stem(source: Word, plural: bool) -> (Word, SuffixParts) {
     if !plural {
         return (source, EMPTY_SUFFIX);
     }
@@ -145,7 +145,7 @@ fn plural_stem(source: Word, plural: bool) -> (Word, SuffixParts) {
     )
 }
 
-fn possessed_stem(
+pub(super) fn possessed_stem(
     source: Word,
     plural: bool,
     possessor: Option<Possessor>,

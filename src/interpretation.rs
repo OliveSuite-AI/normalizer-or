@@ -5,8 +5,8 @@ use crate::{
         electronic::Electronic,
         identifiers::{Iban, Telephone},
         numeric::{Numeric, NumericFailure, NumericPreference},
-        quantities::{NumericRange, Quantity},
-        temporal::{Clock, Date},
+        quantities::{NumericRange, PercentTail, Quantity},
+        temporal::{Clock, ClockRange, Date, DateTail},
     },
     morphology::{Inflection, NominalInflection},
     notation::{DateSurface, TimeSurface},
@@ -15,15 +15,17 @@ use crate::{
 
 #[derive(Clone, Debug)]
 pub(crate) enum Value {
+    Composite(crate::domain::composite::Composite),
     Numeric(Numeric),
     Digits(String),
-    Percent(Number, Option<Inflection>),
-    Date(Date, bool),
+    Percent(Number, Option<PercentTail>),
+    Date(Date, DateTail),
     Time(Clock, bool),
     Quantity(Quantity),
     Lexical(crate::domain::lexicon::Lexeme, Option<Inflection>),
     Pronunciation(crate::domain::lexicon::Lexeme, Option<NominalInflection>),
     Range(NumericRange),
+    ClockRange(ClockRange),
     Telephone(Telephone),
     Iban(Iban),
     Roman(Numeric),
@@ -32,7 +34,7 @@ pub(crate) enum Value {
 }
 
 pub(crate) enum TemporalPreference {
-    Date(Date, bool),
+    Date(Date, DateTail),
     Time(Clock, bool),
 }
 

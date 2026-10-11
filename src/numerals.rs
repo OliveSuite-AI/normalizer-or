@@ -151,6 +151,12 @@ impl Number {
             _ => None,
         }
     }
+    pub(crate) fn tail(&self) -> Word {
+        self.fraction.as_bytes().last().map_or_else(
+            || cardinal_tail(self.integer),
+            |digit| DIGITS[usize::from(digit - b'0')],
+        )
+    }
 }
 
 use crate::morphology::{Harmony, WordEnd};
@@ -186,6 +192,28 @@ const SCALES: [Word; 5] = [
     Word::new("trilyon", Harmony::BackRound, WordEnd::Voiced),
     Word::new("katrilyon", Harmony::BackRound, WordEnd::Voiced),
 ];
+
+pub(crate) fn cardinal_tail(mut value: u64) -> Word {
+    if value == 0 {
+        return DIGITS[0];
+    }
+    let mut scale = 0;
+    while value.is_multiple_of(1000) {
+        value /= 1000;
+        scale += 1;
+    }
+    if scale > 0 {
+        return SCALES[scale - 1];
+    }
+    let group = value % 1000;
+    if !group.is_multiple_of(10) {
+        DIGITS[(group % 10) as usize]
+    } else if !group.is_multiple_of(100) {
+        TENS[((group % 100) / 10 - 1) as usize]
+    } else {
+        HUNDRED
+    }
+}
 
 fn push_group(value: u16, words: &mut Vec<Word>) {
     if value >= 100 {

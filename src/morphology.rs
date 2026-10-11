@@ -1,6 +1,8 @@
 mod nominal;
+mod tails;
 
 pub(crate) use nominal::NominalInflection;
+pub(crate) use tails::{Realization, TailInflection};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum Inflection {
@@ -65,8 +67,19 @@ impl Word {
     pub(crate) const fn new(text: &'static str, harmony: Harmony, end: WordEnd) -> Self {
         Self { text, harmony, end }
     }
+    #[cfg(test)]
     pub(crate) fn source_suffix(self, inflection: Inflection) -> String {
         self.suffix_parts(inflection).concat()
+    }
+    pub(crate) fn strip_suffix_prefix(
+        self,
+        inflection: Inflection,
+        mut text: &str,
+    ) -> Option<&str> {
+        for part in self.suffix_parts(inflection) {
+            text = text.strip_prefix(part)?;
+        }
+        Some(text)
     }
     fn suffix_parts(self, inflection: Inflection) -> [&'static str; 4] {
         let high = self.harmony.high();
@@ -134,9 +147,6 @@ impl Spoken {
         self.text.push_str(word.text);
         self.tail = word;
     }
-    pub(crate) fn source_suffix(&self, inflection: Inflection) -> String {
-        self.tail.source_suffix(inflection)
-    }
     pub(crate) fn inflect(&mut self, inflection: Inflection) {
         let vowel_suffix = matches!(
             inflection,
@@ -146,11 +156,7 @@ impl Spoken {
                 | Inflection::Genitive
         );
         self.append_suffix(self.tail.suffix_parts(inflection), vowel_suffix);
-        match inflection {
-            Inflection::Ordinal => self.tail.end = WordEnd::Vowel,
-            Inflection::Derivation => self.tail.end = WordEnd::Voiceless,
-            _ => {}
-        }
+        self.tail = self.tail.inflected(inflection);
     }
     fn append_suffix(&mut self, parts: [&str; 4], vowel_start: bool) {
         if vowel_start {
@@ -173,17 +179,21 @@ impl Spoken {
     }
 }
 
-pub(crate) fn integer_inflection(spoken: &Spoken, suffix: &str) -> Option<Inflection> {
-    [
-        Inflection::Ordinal,
-        Inflection::Accusative,
-        Inflection::Dative,
-        Inflection::Locative,
-        Inflection::Ablative,
-        Inflection::Genitive,
-    ]
-    .into_iter()
-    .find(|inflection| spoken.source_suffix(*inflection) == suffix)
+impl Word {
+    pub(crate) fn inflected(self, inflection: Inflection) -> Self {
+        let (harmony, end) = match inflection {
+            Inflection::Ordinal | Inflection::Accusative => (self.harmony, WordEnd::Vowel),
+            Inflection::Dative | Inflection::Locative => (self.harmony.flat(), WordEnd::Vowel),
+            Inflection::Ablative => (self.harmony.flat(), WordEnd::Voiced),
+            Inflection::Genitive => (self.harmony, WordEnd::Voiced),
+            Inflection::Derivation => (self.harmony, WordEnd::Voiceless),
+        };
+        Self {
+            harmony,
+            end,
+            ..self
+        }
+    }
 }
 
 pub(crate) fn case_inflection(source: Word, suffix: &str) -> Option<Inflection> {
@@ -195,17 +205,5 @@ pub(crate) fn case_inflection(source: Word, suffix: &str) -> Option<Inflection> 
         Inflection::Genitive,
     ]
     .into_iter()
-    .find(|family| source.source_suffix(*family) == suffix)
-}
-
-pub(crate) fn spoken_case(spoken: &Spoken, suffix: &str) -> Option<Inflection> {
-    [
-        Inflection::Accusative,
-        Inflection::Dative,
-        Inflection::Locative,
-        Inflection::Ablative,
-        Inflection::Genitive,
-    ]
-    .into_iter()
-    .find(|family| spoken.source_suffix(*family) == suffix)
+    .find(|family| source.strip_suffix_prefix(*family, suffix) == Some(""))
 }

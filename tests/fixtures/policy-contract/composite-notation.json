@@ -1,0 +1,9 @@
+[
+  {"id":"product-right-money","class":"expression","text":"12 x 833,25 TL","expected":"on iki çarpı sekiz yüz otuz üç Türk lirası yirmi beş kuruş"},
+  {"id":"product-explicit-chain","class":"expression","text":"12*2*833,25 TL","expected":"on iki çarpı iki çarpı sekiz yüz otuz üç Türk lirası yirmi beş kuruş"},
+  {"id":"product-grouping-intent","class":"expression","text":"1.234 x 2","expected":"bin iki yüz otuz dört çarpı iki"},
+  {"id":"product-grouped-money","class":"expression","text":"12 x 1 234,50 TL","expected":"on iki çarpı bin iki yüz otuz dört Türk lirası elli kuruş"},
+  {"id":"address-street-ordinal","class":"address","text":"adres: 245. Sk.","expected":"adres: iki yüz kırk beşinci sokak"},
+  {"id":"address-compound-no-apartment","class":"address","text":"adres: No:12/4","expected":"adres: bina numarası on iki, daire numarası dört"},
+  {"id":"address-compound-explicit-apartment","class":"address","text":"adres: No:12/4 Daire:7","expected":"adres: numara on iki bölü dört daire yedi"}
+]

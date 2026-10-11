@@ -1,9 +1,15 @@
 //! Validated money, measurements, percentages and contextual ranges.
+mod percentage;
+mod range;
+
+pub(crate) use percentage::{PercentTail, percent, percent_body};
+pub(crate) use range::NumericRange;
+
 use super::lexicon::{self, Currency, Lexeme};
 use crate::{
     IssueCategory,
-    morphology::{Inflection, Spoken, case_inflection, spoken_case},
-    notation::{split_suffix, suffix_parts},
+    morphology::{Realization, Spoken, TailInflection, Word, case_inflection},
+    notation::split_suffix,
     numerals::{self, Amount, Number},
 };
 
@@ -18,73 +24,151 @@ pub(crate) struct Quantity {
     value: QuantityValue,
     lexeme: Lexeme,
     prefix: Option<Lexeme>,
-    case: Option<Inflection>,
+    tail: Option<TailInflection>,
 }
 
 impl Quantity {
-    pub(crate) fn parse(number: &str, label: &str) -> Option<Self> {
-        let (base, suffix) = split_suffix(label)?;
+    pub(crate) fn parse(number: &str, label: &str) -> Result<Self, IssueCategory> {
+        let (base, suffix) = split_suffix(label).ok_or(IssueCategory::InvalidExpression)?;
         Self::parse_with_suffix(number, base, suffix)
     }
     pub(crate) fn parse_with_suffix(
         number: &str,
         base: &str,
         suffix: Option<&str>,
-    ) -> Option<Self> {
+    ) -> Result<Self, IssueCategory> {
+        let invalid = IssueCategory::InvalidExpression;
         let (value, lexeme, prefix) = if let Some(currency) = Currency::parse(base) {
             (
-                QuantityValue::Money(Amount::parse(number)?, currency),
+                QuantityValue::Money(Amount::parse(number).ok_or(invalid)?, currency),
                 currency.lexeme(base),
                 None,
             )
         } else if let Some((prefix, lexeme)) = lexicon::rate(base) {
-            if suffix.is_some() {
-                return None;
-            }
             (
-                QuantityValue::Number(Number::parse(number)?),
+                QuantityValue::Number(Number::parse(number).ok_or(invalid)?),
                 lexeme,
                 Some(prefix),
             )
         } else {
             (
-                QuantityValue::Number(Number::parse(number)?),
-                lexicon::unit(base)?,
+                QuantityValue::Number(Number::parse(number).ok_or(invalid)?),
+                lexicon::unit(base).ok_or(IssueCategory::Unsupported)?,
                 None,
             )
         };
-        let case = suffix.map_or(Some(None), |s| case_inflection(lexeme.source, s).map(Some))?;
-        Some(Self {
+        let mut quantity = Self {
             value,
             lexeme,
             prefix,
-            case,
-        })
+            tail: None,
+        };
+        quantity.tail = suffix
+            .map(|suffix| quantity.select_tail(suffix))
+            .transpose()?;
+        Ok(quantity)
+    }
+
+    /// Validates the complete isolated leaf, without claiming arithmetic continuations.
+    pub(crate) fn parse_operand(source: &str) -> Result<Self, IssueCategory> {
+        let invalid = IssueCategory::InvalidExpression;
+        if source.trim() != source {
+            return Err(invalid);
+        }
+        if let Some(offset) = source.find(char::is_whitespace) {
+            let label = &source[..offset];
+            if crate::notation::label(label) {
+                let number = source[offset..].trim();
+                if matches!(label, "₺" | "$" | "€" | "£") {
+                    let (body, suffix) = split_suffix(number).ok_or(invalid)?;
+                    return Self::parse_with_suffix(body, label, suffix);
+                }
+                return Self::parse(number, label);
+            }
+        }
+        let (body, suffix) = split_suffix(source).ok_or(invalid)?;
+        if let Some((number, label)) = crate::notation::attached_quantity(body)
+            && crate::notation::label(label)
+        {
+            return Self::parse_with_suffix(number.trim(), label, suffix);
+        }
+        if let Some(offset) = body.rfind(char::is_whitespace) {
+            let label = &body[offset..].trim();
+            if crate::notation::label(label) {
+                return Self::parse_with_suffix(body[..offset].trim(), label, suffix);
+            }
+        }
+        Err(invalid)
+    }
+
+    fn target_tail(&self, form: TailInflection) -> (&'static str, Word, TailInflection) {
+        if let QuantityValue::Money(amount, currency) = &self.value {
+            if amount.minor() != 0 {
+                let minor = currency.minor();
+                return (minor.output, minor.target, form);
+            }
+            if let Some(head) = currency.compound_head()
+                && (form.has_possession() || form.has_plural())
+            {
+                let form = if form.has_possession() {
+                    form
+                } else {
+                    form.with_compound_possession()
+                };
+                return (head.output, head.target, form);
+            }
+        }
+        (self.lexeme.output, self.lexeme.target, form)
+    }
+
+    fn select_tail(&self, suffix: &str) -> Result<TailInflection, IssueCategory> {
+        if let Some(case) = case_inflection(self.lexeme.source, suffix) {
+            return Ok(TailInflection::case(case));
+        }
+        let mut selected = None;
+        let mut realization: Option<(&str, Realization)> = None;
+        let mut ambiguous = false;
+        TailInflection::analyses(self.lexeme.source, suffix, |form| {
+            let (head, target, target_form) = self.target_tail(form);
+            let candidate = target_form.realization(target);
+            if realization
+                .is_some_and(|(old_head, old)| old_head != head || !old.same_speech(candidate))
+            {
+                ambiguous = true;
+            } else {
+                selected.get_or_insert(form);
+                realization = Some((head, candidate));
+            }
+        });
+        if ambiguous {
+            Err(IssueCategory::Ambiguous)
+        } else {
+            selected.ok_or(IssueCategory::InvalidExpression)
+        }
     }
     pub(crate) fn render(&self) -> Spoken {
         let mut spoken = match &self.value {
             QuantityValue::Number(number) => {
-                let text = format!(
-                    "{} {}",
-                    numerals::number(number).into_text(),
-                    self.lexeme.output
-                );
+                let number = numerals::number(number).into_text();
+                let text = if let Some(numerator) = self.prefix {
+                    format!("{number} {} {}", numerator.output, self.lexeme.output)
+                } else {
+                    format!("{number} {}", self.lexeme.output)
+                };
                 Spoken::lexical(&text, self.lexeme.target)
             }
-            QuantityValue::Money(amount, currency) => numerals::amount(
-                amount,
-                self.lexeme.output,
-                self.lexeme.target,
-                currency.minor().target,
-            ),
+            QuantityValue::Money(amount, currency) => {
+                let (output, target, _) = self.target_tail(self.tail.unwrap_or_default());
+                let (major, major_tail) = if amount.minor() == 0 {
+                    (output, target)
+                } else {
+                    (self.lexeme.output, self.lexeme.target)
+                };
+                numerals::amount(amount, major, major_tail, currency.minor().target)
+            }
         };
-        if let Some(prefix) = self.prefix {
-            let mut denominator = Spoken::lexical(prefix.output, prefix.target);
-            denominator.inflect(Inflection::Locative);
-            spoken.prefix(&format!("{} ", denominator.into_text()));
-        }
-        if let Some(case) = self.case {
-            spoken.inflect(case);
+        if let Some(tail) = self.tail {
+            self.target_tail(tail).2.apply(&mut spoken);
         }
         spoken
     }
@@ -93,100 +177,5 @@ impl Quantity {
     }
 }
 
-pub(crate) fn percent(text: &str) -> Option<Result<(Number, Option<Inflection>), IssueCategory>> {
-    let (base, suffixes) = suffix_parts(text)?;
-    let body = base.strip_prefix('%').or_else(|| base.strip_suffix('%'))?;
-    Some(percent_value(body, &suffixes))
-}
-
-pub(crate) fn percent_body(text: &str) -> Result<(Number, Option<Inflection>), IssueCategory> {
-    let (body, suffixes) = suffix_parts(text).ok_or(IssueCategory::Unsupported)?;
-    percent_value(body, &suffixes)
-}
-
-fn percent_value(
-    body: &str,
-    suffixes: &[&str],
-) -> Result<(Number, Option<Inflection>), IssueCategory> {
-    let number = match Number::parse(body) {
-        Some(n) => n,
-        None => return Err(IssueCategory::InvalidExpression),
-    };
-    if suffixes.len() > 1 {
-        return Err(IssueCategory::Unsupported);
-    }
-    let spoken = numerals::number(&number);
-    let inflection = match suffixes.first() {
-        Some(s) if *s == spoken.source_suffix(Inflection::Derivation) => {
-            Some(Inflection::Derivation)
-        }
-        Some(s) => match spoken_case(&spoken, s) {
-            Some(case) => Some(case),
-            None => return Err(IssueCategory::InvalidExpression),
-        },
-        None => None,
-    };
-    // Keep the validated number and grammatical family, not parsed emitted text.
-    Ok((number, inflection))
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct NumericRange {
-    start: Number,
-    end: Number,
-    context: Option<Lexeme>,
-    noun: Option<String>,
-}
-
-impl NumericRange {
-    pub(crate) fn parse(text: &str, context: Option<&str>) -> Option<Self> {
-        let mut found = None;
-        for (offset, ch) in text.char_indices() {
-            if !matches!(ch, '-' | '–') || offset == 0 {
-                continue;
-            }
-            if let (Some(start), Some(end)) = (
-                Number::parse(text[..offset].trim()),
-                Number::parse(text[offset + ch.len_utf8()..].trim()),
-            ) {
-                if found.is_some() {
-                    return None;
-                }
-                found = Some((start, end));
-            }
-        }
-        let (start, end) = found?;
-        let (unit, noun) = match context {
-            Some(value)
-                if ["kişi", "adet", "gün", "yaş"]
-                    .contains(&lexicon::lookup_key(value).as_str()) =>
-            {
-                (None, Some(value.to_owned()))
-            }
-            Some(value) => (Some(lexicon::unit(value)?), None),
-            None => (None, None),
-        };
-        Some(Self {
-            start,
-            end,
-            context: unit,
-            noun,
-        })
-    }
-    pub(crate) fn render(&self) -> String {
-        let mut result = format!(
-            "{} ila {}",
-            numerals::number(&self.start).into_text(),
-            numerals::number(&self.end).into_text()
-        );
-        if let Some(unit) = self.context {
-            result.push(' ');
-            result.push_str(unit.output);
-        }
-        if let Some(noun) = &self.noun {
-            result.push(' ');
-            result.push_str(noun);
-        }
-        result
-    }
-}
+#[cfg(test)]
+mod tests;

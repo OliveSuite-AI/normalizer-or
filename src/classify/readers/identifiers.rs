@@ -1,16 +1,21 @@
 use super::super::scan::{Token, whitespace_between};
 use super::{Attempt, Context};
 use crate::{
-    IssueCategory,
+    IssueCategory, NormalizeError, WorkControl,
     domain::{
         identifiers::{Iban, Telephone},
         lexicon,
-        quantities::NumericRange,
+        quantities::{NumericRange, Quantity},
+        temporal::{Clock, Date},
     },
     interpretation::Value,
     notation,
 };
-pub(super) fn read(ctx: &Context<'_>, index: usize) -> Option<Attempt> {
+pub(super) fn read(
+    ctx: &Context<'_>,
+    index: usize,
+    control: &WorkControl,
+) -> Result<Option<Attempt>, NormalizeError> {
     let text = ctx.text;
     let tokens = ctx.tokens;
     let token = tokens[index];
@@ -26,7 +31,7 @@ pub(super) fn read(ctx: &Context<'_>, index: usize) -> Option<Attempt> {
         && source.as_bytes()[2..].iter().all(u8::is_ascii_alphanumeric)
         && (((source.starts_with("TR") || source.starts_with("tr"))
             && (source.as_bytes()[2..].iter().all(u8::is_ascii_digit)
-                || source.len() == 26
+                || source.len() == Iban::CHARACTERS
                 || (source.len() == 4
                     && (source.as_bytes()[2..].iter().any(u8::is_ascii_digit)
                         || numeric_group_context))))
@@ -38,14 +43,14 @@ pub(super) fn read(ctx: &Context<'_>, index: usize) -> Option<Attempt> {
                 next.text.len() == 2 && next.text.bytes().all(|b| b.is_ascii_digit())
             }));
     if iban_like {
-        let end = iban_end(text, tokens, index);
+        let end = iban_end(text, tokens, index, control)?;
         let whole = &text[token.range.start..tokens[end].range.end];
-        return Some((
+        return Ok(Some((
             Iban::parse(whole)
                 .map(Value::Iban)
                 .ok_or(IssueCategory::ProtectedIdentifier),
             end,
-        ));
+        )));
     }
     let zero_group_signal = source == "0"
         && tokens.get(index + 1).is_some_and(|next| {
@@ -70,7 +75,7 @@ pub(super) fn read(ctx: &Context<'_>, index: usize) -> Option<Attempt> {
             && source.bytes().all(|b| b.is_ascii_digit())
             && ctx.cue(index, &["telefon", "tel"]))
     {
-        let end = group_end(text, tokens, index);
+        let end = group_end(text, tokens, index, control)?;
         let whole = &text[token.range.start..tokens[end].range.end];
         let digits = whole.chars().filter(|c| c.is_ascii_digit()).count();
         let phone_cue = telephone_cue;
@@ -94,18 +99,18 @@ pub(super) fn read(ctx: &Context<'_>, index: usize) -> Option<Attempt> {
         {
             let phone = Telephone::parse(whole, phone_cue);
             if phone.is_none() && ctx.money_end(index).is_some() {
-                return None;
+                return Ok(None);
             }
-            return Some((
+            return Ok(Some((
                 phone
                     .map(Value::Telephone)
                     .ok_or(IssueCategory::InvalidExpression),
                 end,
-            ));
+            )));
         }
     }
 
-    None
+    Ok(None)
 }
 
 fn number_group(token: &str) -> bool {
@@ -114,9 +119,15 @@ fn number_group(token: &str) -> bool {
             .chars()
             .all(|ch| ch.is_ascii_digit() || matches!(ch, '+' | '-' | '(' | ')'))
 }
-fn group_end(text: &str, tokens: &[Token<'_>], index: usize) -> usize {
+fn group_end(
+    text: &str,
+    tokens: &[Token<'_>],
+    index: usize,
+    control: &WorkControl,
+) -> Result<usize, NormalizeError> {
     let mut end = index;
     while let Some(next) = tokens.get(end + 1) {
+        control.check()?;
         if !(number_group(next.text)
             || (next.text.len() <= 4
                 && next.text.starts_with(|c: char| c.is_ascii_digit())
@@ -129,15 +140,28 @@ fn group_end(text: &str, tokens: &[Token<'_>], index: usize) -> usize {
         }
         end += 1;
     }
-    end
+    Ok(end)
 }
-fn iban_end(text: &str, tokens: &[Token<'_>], index: usize) -> usize {
+fn iban_end(
+    text: &str,
+    tokens: &[Token<'_>],
+    index: usize,
+    control: &WorkControl,
+) -> Result<usize, NormalizeError> {
     let mut end = index;
     let mut characters = tokens[index].text.len();
     while let Some(next) = tokens.get(end + 1) {
+        control.check()?;
+        let independent = characters >= Iban::CHARACTERS
+            && (Quantity::parse_operand(next.text).is_ok()
+                || notation::split_suffix(next.text).is_some_and(|(base, _)| {
+                    Date::parse(base).is_some() || Clock::parse(base).is_some()
+                }));
         if lexicon::abbreviation(next.text).is_some()
             || notation::label(next.text)
-            || (next.text.bytes().all(|b| b.is_ascii_digit())
+            || independent
+            || (characters >= Iban::CHARACTERS
+                && next.text.bytes().all(|b| b.is_ascii_digit())
                 && tokens.get(end + 2).is_some_and(|label| {
                     notation::label(label.text)
                         && whitespace_between(text, next.range.end, label.range.start)
@@ -147,17 +171,19 @@ fn iban_end(text: &str, tokens: &[Token<'_>], index: usize) -> usize {
         }
         if !whitespace_between(text, tokens[end].range.end, next.range.start)
             || next.text.is_empty()
-            || !next
+            || !(next
                 .text
                 .bytes()
                 .all(|b| b.is_ascii_digit() || b.is_ascii_uppercase())
+                || next.text.starts_with(|ch: char| ch.is_ascii_digit()))
             || (!next.text.bytes().any(|b| b.is_ascii_digit()) && next.text.len() > 4)
-            || (characters >= 26 && !next.text.bytes().all(|b| b.is_ascii_digit()))
+            || (characters >= Iban::CHARACTERS
+                && !next.text.starts_with(|ch: char| ch.is_ascii_digit()))
         {
             break;
         }
         characters += next.text.len();
         end += 1;
     }
-    end
+    Ok(end)
 }

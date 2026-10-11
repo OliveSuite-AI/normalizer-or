@@ -106,6 +106,13 @@ Review [coverage](https://github.com/erdemtuna/normalizer-tr/blob/main/docs/norm
 and [migration notes](https://github.com/erdemtuna/normalizer-tr/blob/main/CHANGELOG.md#060---2026-10-11),
 including changed Instagram and WhatsApp readings, before upgrading.
 
+**Unreleased:** expanded numeric/quantity suffixes, date formats and clock ranges,
+flat multiplication readings and contextual address fields. See the
+[normalization reference](https://github.com/erdemtuna/normalizer-tr/blob/main/docs/normalization.md)
+and [migration notes](https://github.com/erdemtuna/normalizer-tr/blob/main/CHANGELOG.md#unreleased)
+for intentional rate-reading and source-boundary changes. These additions do
+not imply a published package version.
+
 ## License
 
 [Apache-2.0](https://github.com/erdemtuna/normalizer-tr/blob/main/LICENSE),

@@ -16,15 +16,8 @@ fn normalization_cases_have_exact_policy_outcomes_and_source_partitions() {
     for case in cases {
         let input = case["text"].as_str().unwrap();
         let mut options = NormalizeOptions::default();
-        if let Some(hint) = case.get("hint") {
-            assert_eq!(hint["kind"], "date");
-            options.hints.push(Hint::new(
-                SourceRange::new(
-                    hint["start"].as_u64().unwrap() as usize,
-                    hint["end"].as_u64().unwrap() as usize,
-                ),
-                HintKind::Date,
-            ));
+        if let Some(hint) = policy_fixtures::hint(&case) {
+            options.hints.push(hint);
         }
 
         let preserve = normalizer.normalize(input, &options).unwrap();

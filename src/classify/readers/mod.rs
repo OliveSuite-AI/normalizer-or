@@ -2,6 +2,7 @@ mod electronic;
 mod identifiers;
 mod lexical;
 mod numeric;
+mod products;
 mod pronunciation;
 mod quantities;
 
@@ -12,7 +13,7 @@ use super::{
     temporal,
 };
 use crate::{
-    FallbackClass, HintKind, IssueCategory,
+    FallbackClass, HintKind, IssueCategory, NormalizeError, WorkControl,
     domain::{
         electronic::Electronic, identifiers::Telephone, numeric::Numeric, quantities::NumericRange,
     },
@@ -56,7 +57,7 @@ impl Context<'_> {
     }
 }
 
-pub(super) fn hint(text: &str, kind: HintKind) -> Option<Value> {
+pub(super) fn hint(text: &str, kind: HintKind, following_ile: bool) -> Option<Value> {
     match kind {
         HintKind::Cardinal => Some(Value::Numeric(Numeric::cardinal_hint(text)?)),
         HintKind::Digits => Some(Value::Digits(numbers::digits_hint(text)?)),
@@ -67,6 +68,9 @@ pub(super) fn hint(text: &str, kind: HintKind) -> Option<Value> {
         HintKind::Telephone => Some(Value::Telephone(Telephone::parse(text, true)?)),
         HintKind::Electronic => Some(Value::Electronic(Electronic::parse(text, true)?)),
         HintKind::Range => {
+            if let Some(range) = temporal::range_hint(text, following_ile) {
+                return Some(range);
+            }
             let (body, noun) = text
                 .rsplit_once(' ')
                 .map_or((text, None), |(body, noun)| (body, Some(noun)));
@@ -80,7 +84,11 @@ pub(super) fn read(
     ctx: &Context<'_>,
     index: usize,
     bounds: &Boundaries<'_>,
-) -> Option<(super::Reading, usize)> {
+    control: &WorkControl,
+) -> Result<Option<(super::Reading, usize)>, NormalizeError> {
+    if let Some(attempt) = products::read(ctx, index, control)? {
+        return Ok(Some(attempt));
+    }
     let annotate = |attempt: Attempt, class| {
         let (reading, end) = attempt;
         let source = &ctx.text[ctx.tokens[index].range.start..ctx.tokens[end].range.end];
@@ -110,7 +118,7 @@ pub(super) fn read(
         }
         None
     };
-    electronic::whole(ctx, index)
+    let priority = electronic::whole(ctx, index)
         .map(|attempt| annotate(attempt, FallbackClass::Electronic))
         .or_else(|| {
             pronunciation::read(ctx, index)
@@ -125,12 +133,20 @@ pub(super) fn read(
         .or_else(|| {
             electronic::contextual(ctx, index)
                 .map(|attempt| annotate(attempt, FallbackClass::Electronic))
-        })
-        .or_else(|| {
-            identifiers::read(ctx, index)
-                .map(|attempt| annotate(attempt, FallbackClass::Identifier))
-        })
-        .or_else(|| numeric::read(ctx, index).map(|(attempt, class)| annotate(attempt, class)))
+        });
+    if priority.is_some() {
+        return Ok(priority);
+    }
+    if let Some(range) = temporal::range(ctx.text, ctx.tokens, index) {
+        return Ok(Some(range));
+    }
+    let date_shaped = numbers::split_suffix(ctx.tokens[index].text)
+        .is_some_and(|(base, _)| crate::domain::temporal::Date::parse(base).is_some());
+    if !date_shaped && let Some(attempt) = identifiers::read(ctx, index, control)? {
+        return Ok(Some(annotate(attempt, FallbackClass::Identifier)));
+    }
+    Ok(numeric::read(ctx, index)
+        .map(|(attempt, class)| annotate(attempt, class))
         .or_else(|| {
             quantities::read(ctx, index).map(|attempt| annotate(attempt, FallbackClass::Quantity))
         })
@@ -157,7 +173,7 @@ pub(super) fn read(
             unsupported_quantity(ctx, index)
                 .map(|attempt| annotate(attempt, FallbackClass::Quantity))
         })
-        .or_else(|| token(ctx, index).map(|reading| (reading, index)))
+        .or_else(|| token(ctx, index).map(|reading| (reading, index))))
 }
 
 fn unsupported_quantity(ctx: &Context<'_>, index: usize) -> Option<Attempt> {

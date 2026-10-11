@@ -1,9 +1,15 @@
 //! Validated Gregorian dates and digital clocks.
+use crate::{
+    morphology::{Spoken, TailInflection, Word},
+    numerals,
+};
+
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum DateFormat {
     Dotted,
     Iso,
-    Slash,
+    SlashDmy,
+    SlashYmd,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -19,14 +25,18 @@ impl Date {
         let format = if text.contains('.') {
             DateFormat::Dotted
         } else if text.contains('/') {
-            DateFormat::Slash
+            if text.split('/').next()?.len() == 4 {
+                DateFormat::SlashYmd
+            } else {
+                DateFormat::SlashDmy
+            }
         } else {
             DateFormat::Iso
         };
         let separator = match format {
             DateFormat::Dotted => '.',
             DateFormat::Iso => '-',
-            DateFormat::Slash => '/',
+            DateFormat::SlashDmy | DateFormat::SlashYmd => '/',
         };
         let mut parts = text.split(separator);
         let (Some(first), Some(second), Some(third), None) =
@@ -34,7 +44,7 @@ impl Date {
         else {
             return None;
         };
-        let (day, month, year) = if matches!(format, DateFormat::Iso) {
+        let (day, month, year) = if matches!(format, DateFormat::Iso | DateFormat::SlashYmd) {
             (third, second, first)
         } else {
             (first, second, third)
@@ -80,11 +90,40 @@ impl Date {
     pub(crate) fn year(self) -> u16 {
         self.year
     }
-    pub(crate) fn dotted(self) -> bool {
-        matches!(self.format, DateFormat::Dotted)
-    }
     pub(crate) fn slash(self) -> bool {
-        matches!(self.format, DateFormat::Slash)
+        matches!(self.format, DateFormat::SlashDmy)
+    }
+    pub(crate) fn year_first_slash(self) -> bool {
+        matches!(self.format, DateFormat::SlashYmd)
+    }
+    pub(crate) fn source_tail(self) -> Word {
+        numerals::cardinal_tail(u64::from(
+            if matches!(self.format, DateFormat::Iso | DateFormat::SlashYmd) {
+                u16::from(self.day)
+            } else {
+                self.year
+            },
+        ))
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub(crate) struct DateTail(Option<TailInflection>);
+
+impl DateTail {
+    pub(crate) fn parse(date: Date, suffix: Option<&str>) -> Option<Self> {
+        Some(Self(match suffix {
+            Some(suffix) => Some(TailInflection::date(date.source_tail(), suffix)?),
+            None => None,
+        }))
+    }
+    pub(crate) fn is_locative(self) -> bool {
+        self.0.is_some_and(TailInflection::is_locative)
+    }
+    pub(crate) fn apply(self, spoken: &mut Spoken) {
+        if let Some(tail) = self.0 {
+            tail.apply(spoken);
+        }
     }
 }
 
@@ -118,7 +157,47 @@ impl Clock {
     pub(crate) fn minute(self) -> u8 {
         self.minute
     }
+    pub(crate) fn tail(self) -> Word {
+        numerals::cardinal_tail(u64::from(if self.minute == 0 {
+            self.hour
+        } else {
+            self.minute
+        }))
+    }
 }
+
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct ClockRange {
+    start: Clock,
+    end: Clock,
+    ile: bool,
+}
+
+impl ClockRange {
+    pub(crate) fn parse(source: &str, ile: bool) -> Option<Self> {
+        let (start, end) = source.split_once(['-', '–'])?;
+        if ![start, end].iter().all(|part| part.contains(['.', ':'])) {
+            return None;
+        }
+        Some(Self {
+            start: Clock::parse(start.trim())?,
+            end: Clock::parse(end.trim())?,
+            ile,
+        })
+    }
+    pub(crate) fn start(self) -> Clock {
+        self.start
+    }
+    pub(crate) fn end(self) -> Clock {
+        self.end
+    }
+    pub(crate) fn connector(self) -> &'static str {
+        if self.ile { "ile" } else { "ila" }
+    }
+}
+
+#[cfg(test)]
+mod notation_tests;
 
 #[cfg(test)]
 mod tests {

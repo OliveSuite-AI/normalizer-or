@@ -2,10 +2,14 @@ use std::mem::size_of;
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::{
-    AmbiguityPolicy, FallbackDiagnostic, Issue, IssueCategory, LimitKind, MAX_HINTS,
-    MAX_INPUT_BYTES, MAX_RESULT_BYTES, NormalizeError, NormalizeOptions, NormalizeResult, Segment,
-    SegmentKind, SourceRange, WorkControl, classify, resolution, resources::Resources,
-    source_map::SourceMap, verbalize,
+    AmbiguityPolicy, FallbackDiagnostic, Issue, IssueCategory, LimitKind, MAX_CANDIDATES,
+    MAX_HINTS, MAX_INPUT_BYTES, MAX_RESULT_BYTES, NormalizeError, NormalizeOptions,
+    NormalizeResult, Segment, SegmentKind, SourceRange, WorkControl, classify, resolution,
+    resources::Resources, source_map::SourceMap, verbalize,
+};
+use crate::{
+    domain::composite::{ComponentValue, Composite},
+    interpretation::{Reading, Value},
 };
 
 #[derive(Default)]
@@ -113,6 +117,54 @@ fn fallback_reading(
     ))
 }
 
+fn composite(
+    value: &Composite,
+    owner: SourceRange,
+    mapped_input: (&SourceMap<'_>, &str),
+    segments: &mut Vec<Segment>,
+    budget: &mut ResultBudget,
+    control: &WorkControl,
+) -> Result<(), NormalizeError> {
+    let (source, input) = mapped_input;
+    let mut cursor = owner.start;
+    for component in &value.components {
+        control.check()?;
+        if component.range.start != cursor
+            || component.range.start >= component.range.end
+            || component.range.end > owner.end
+        {
+            return Err(NormalizeError::Internal);
+        }
+        let range = source
+            .original(component.range)
+            .map_err(|_| NormalizeError::Internal)?;
+        let (kind, rule_id, text) = match &component.value {
+            ComponentValue::Text {
+                kind: SegmentKind::Verbatim,
+                rule_id,
+                ..
+            } => (
+                SegmentKind::Verbatim,
+                *rule_id,
+                input[range.start..range.end].to_owned(),
+            ),
+            value => verbalize::render_component(value),
+        };
+        budget.segment(text.len())?;
+        segments.push(Segment {
+            range,
+            kind,
+            text,
+            rule_id,
+        });
+        cursor = component.range.end;
+    }
+    if cursor != owner.end {
+        return Err(NormalizeError::Internal);
+    }
+    Ok(())
+}
+
 pub(crate) fn run(
     input: &str,
     options: &NormalizeOptions,
@@ -140,6 +192,30 @@ pub(crate) fn run(
     if options.ambiguity_policy == AmbiguityPolicy::Fallback {
         classify::supplement(&source, &mut candidates, control)?;
     }
+    let mut work_records = 0_usize;
+    for candidate in &candidates {
+        let records = match &candidate.reading {
+            Reading::Resolved(Value::Composite(value)) => value
+                .components
+                .iter()
+                .filter(|part| {
+                    !matches!(
+                        part.value,
+                        ComponentValue::Text {
+                            kind: SegmentKind::Verbatim,
+                            ..
+                        }
+                    )
+                })
+                .count()
+                .max(1),
+            _ => 1,
+        };
+        work_records = work_records
+            .checked_add(records)
+            .filter(|count| *count <= MAX_CANDIDATES)
+            .ok_or(NormalizeError::LimitExceeded(LimitKind::Candidates))?;
+    }
     let mut budget = ResultBudget::default();
     budget.charge(size_of::<NormalizeResult>())?;
     let mut segments = Vec::new();
@@ -155,9 +231,21 @@ pub(crate) fn run(
             return Err(NormalizeError::Internal);
         }
         verbatim(input, cursor, range.start, &mut segments, &mut budget)?;
+        if let Reading::Resolved(Value::Composite(value)) = &candidate.reading {
+            composite(
+                value,
+                candidate.range,
+                (&source, input),
+                &mut segments,
+                &mut budget,
+                control,
+            )?;
+            cursor = range.end;
+            continue;
+        }
         let (kind, rule_id, text) =
             match resolution::select(&candidate.reading, options.ambiguity_policy) {
-                resolution::Selected::Primary(value) => verbalize::render(value),
+                resolution::Selected::Primary(value) => verbalize::render(value)?,
                 resolution::Selected::Fallback(request) => {
                     let (text, diagnostic) = fallback_reading(
                         request,

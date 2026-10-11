@@ -1,3 +1,4 @@
+mod addresses;
 mod boundaries;
 mod context;
 mod readers;
@@ -44,6 +45,8 @@ pub(crate) fn collect(
     let text = source.text();
     let scanned = scan::tokens(source, resources, control)?;
     let tokens = scanned.tokens;
+    let address_fields = addresses::collect(text, control)?;
+    let mut address_fields = address_fields.into_iter().peekable();
     let phone_like = scan::phones(text, &tokens, resources, control)?;
     let bounds = Boundaries::new(&tokens, &phone_like, &scanned.catalog_groups);
     let ctx = Context {
@@ -55,16 +58,36 @@ pub(crate) fn collect(
     let mut hint_index = 0;
     while index < tokens.len() {
         control.check()?;
+        let address = if address_fields
+            .peek()
+            .is_some_and(|field| field.range.start == tokens[index].range.start)
+        {
+            address_fields.next()
+        } else {
+            None
+        };
+        let detected = address.as_ref().map(|field| Claim {
+            range: field.range,
+            next: bounds.next_at(field.range.end),
+        });
         if let Some(hint) = hints
             .get(hint_index)
             .filter(|h| h.range.start <= tokens[index].range.start)
         {
-            let detected = readers::read(&ctx, index, &bounds)
-                .map(|(_, end)| bounds.claim(index, end))
-                .transpose()?;
+            let detected = match detected {
+                Some(claim) => Some(claim),
+                None => readers::read(&ctx, index, &bounds, control)?
+                    .map(|(_, end)| bounds.claim(index, end))
+                    .transpose()?,
+            };
             let claim = bounds.hint_claim(*hint, detected.as_ref())?;
             let text = &text[claim.range.start..claim.range.end];
-            let value = readers::hint(text, hint.kind).ok_or(NormalizeError::InvalidHint)?;
+            let following_ile = tokens.get(claim.next).is_some_and(|next| {
+                scan::whitespace_between(source.text(), claim.range.end, next.range.start)
+                    && crate::domain::lexicon::lookup_key(next.text) == "arasında"
+            });
+            let value =
+                readers::hint(text, hint.kind, following_ile).ok_or(NormalizeError::InvalidHint)?;
             index = claim.next;
             push(&mut candidates, claim, Reading::Resolved(value))?;
             hint_index += 1;
@@ -76,7 +99,20 @@ pub(crate) fn collect(
         {
             return Err(NormalizeError::InvalidHint);
         }
-        if let Some((reading, end)) = readers::read(&ctx, index, &bounds) {
+        if let Some(field) = address {
+            if overlaps_hint(hints, field.range) {
+                return Err(NormalizeError::InvalidHint);
+            }
+            index = bounds.next_at(field.range.end);
+            push(
+                &mut candidates,
+                Claim {
+                    range: field.range,
+                    next: index,
+                },
+                field.reading,
+            )?;
+        } else if let Some((reading, end)) = readers::read(&ctx, index, &bounds, control)? {
             let claim = bounds.claim(index, end)?;
             if overlaps_hint(hints, claim.range) {
                 return Err(NormalizeError::InvalidHint);
@@ -89,6 +125,9 @@ pub(crate) fn collect(
     }
     if hint_index != hints.len() {
         return Err(NormalizeError::InvalidHint);
+    }
+    if address_fields.next().is_some() {
+        return Err(NormalizeError::Internal);
     }
     Ok(candidates)
 }

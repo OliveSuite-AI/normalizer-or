@@ -28,6 +28,12 @@ See [the exact coverage](../../docs/normalization.md#approved-foreign-names).
 The nominal suffix rules and regression examples are authored in this project.
 No external morphology library, dictionary or model data is added.
 
+Expanded numeric/date/quantity tails, contextual address aliases and flat
+multiplication goldens are likewise project-authored. Address recognition uses
+finite source patterns, not a gazetteer or postal-assignment dataset. Explicit
+source/target tail metadata and reading choices do not certify account or
+address facts.
+
 Owned Rust code, unit/currency/abbreviation/name/character readings and finite
 source/target/derived-tail metadata are Apache-2.0. No bulk dictionary or
 third-party normalizer source was copied. Exact numeral behavior was
