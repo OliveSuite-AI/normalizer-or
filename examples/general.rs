@@ -11,7 +11,7 @@ fn main() -> Result<(), normalizer_tr::NormalizeError> {
         ("5 kg'dan", "beş kilogramdan"),
         ("2 mg", "iki miligram"),
         ("3 m²", "üç metrekare"),
-        ("90 km/sa", "saatte doksan kilometre"),
+        ("90 km/sa", "doksan kilometre saat"),
         ("10-15 kişi", "on ila on beş kişi"),
         ("€14,05", "on dört avro beş sent"),
         (

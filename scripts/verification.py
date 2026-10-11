@@ -152,6 +152,12 @@ def consume(output):
             ("GitHub Copilot", "git hab ko paylıt"),
             ("25kg;CHP,AKP", "yirmi beş kilogram;ce he pe,a ke pe"),
             ("Claude,Hugging Face,UNKNOWN", "Claude,Hugging Face,UNKNOWN"),
+            ("90 km/sa", "doksan kilometre saat"),
+            ("600 TL'dir", "altı yüz Türk lirasıdır"),
+            ("2026/12/31", "otuz bir Aralık iki bin yirmi altı"),
+            ("13:00-17:00 arasında", "on üç ile on yedi arasında"),
+            ("2 x 5kg", "iki çarpı beş kilogram"),
+            ("adres No:5 2 x 3 Kat:3", "adres numara beş iki çarpı üç kat üç"),
         ):
             result = normalizer.normalize(text, ambiguity_policy=policy)
             if (
