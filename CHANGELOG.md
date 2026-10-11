@@ -7,6 +7,8 @@ Platform requirements are in the [README](README.md) and
 
 ## Unreleased
 
+## 0.7.0 - 2026-10-11
+
 - Add bounded plural, six-person possession, case, locative-plus-ki and copular
   suffixes for recognized numbers, percentages and quantities. Preserve
   established case readings and report conflicting new spoken analyses rather
@@ -46,7 +48,8 @@ readings apply only in reviewed address context.
 Corrected source ownership can invalidate formerly admitted component hints and
 change fallback spans. Invalid accounts still do not receive Iban certification.
 Preserve/Reject/Fallback defaults and real input/control/limit errors remain.
-The new forms are repository behavior pending release, not registry availability.
+No downstream speech-model validation was performed; this release validates
+the library's normalized text, not audio quality.
 
 ## 0.6.0 - 2026-10-11
 

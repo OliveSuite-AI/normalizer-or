@@ -89,7 +89,7 @@ same-process constructor calls. Those later calls are **not cold starts**.
 Large 4/16/32 KiB inputs, maximum hints, candidate/result errors and long
 identifiers are separate scaling diagnostics, not 1 ms guarantees.
 
-Unreleased scaling cases cover numeric/copular tails, quantity possession,
+The 0.7.0 scaling cases cover numeric/copular tails, quantity possession,
 written-order rates, clocks/date tails, account periods, contextual address
 fields and long flat products. Source ownership and control checks are part of
 those workloads. Composite outputs charge each constituent, so reaching a limit

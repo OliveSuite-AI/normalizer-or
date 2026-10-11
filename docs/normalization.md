@@ -80,7 +80,7 @@ Rates are only `km/sa`, `km/h` and `m/s`. They use written unit order:
 `5 km/sa` -> `beş kilometre saat`, `5 m/s` -> `beş metre saniye`.
 The denominator supplies the suffix tail: `5 km/sa'tir` ->
 `beş kilometre saattir`. This deliberately changes earlier `saatte` /
-`saniyede` readings; see the Unreleased migration notes.
+`saniyede` readings; see the [0.7.0 migration notes](../CHANGELOG.md#070---2026-10-11).
 Number/label adjacency is supported: `5kg` -> `beş kilogram`.
 
 | Label | Reading in numeric quantity context |

@@ -37,7 +37,7 @@ Requires Rust 1.94 or newer. Add to `Cargo.toml`:
 
 ```toml
 [dependencies]
-normalizer-tr = "0.6"
+normalizer-tr = "0.7"
 ```
 
 ```rust
@@ -106,13 +106,13 @@ Review [coverage](https://github.com/erdemtuna/normalizer-tr/blob/main/docs/norm
 and [migration notes](https://github.com/erdemtuna/normalizer-tr/blob/main/CHANGELOG.md#060---2026-10-11),
 including changed Instagram and WhatsApp readings, before upgrading.
 
-**Unreleased:** expanded numeric/quantity suffixes, date formats and clock ranges,
+**0.7.0:** expanded numeric/quantity suffixes, date formats and clock ranges,
 flat multiplication readings and contextual address fields. See the
 [normalization reference](https://github.com/erdemtuna/normalizer-tr/blob/main/docs/normalization.md)
-and [migration notes](https://github.com/erdemtuna/normalizer-tr/blob/main/CHANGELOG.md#unreleased)
-for intentional rate-reading and source-boundary changes. These additions do
-not imply a published package version. Mixed arithmetic and protected telephone
-operands remain unresolved; adjacent address fields keep independent ownership.
+and [migration notes](https://github.com/erdemtuna/normalizer-tr/blob/main/CHANGELOG.md#070---2026-10-11)
+for intentional rate-reading and source-boundary changes. Mixed arithmetic and
+protected telephone operands remain unresolved; adjacent address fields keep
+independent ownership.
 
 ## License
 
