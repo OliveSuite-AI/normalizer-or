@@ -63,7 +63,7 @@ Policy-contract measurements retain the existing `expanded_coverage_measurement`
 JSON key for report compatibility without changing the frozen inputs, original
 aggregate/order or existing report fields. Reviewed cases come from
 `tests/fixtures/policy-contract.json`, shared with Rust/Python tests.
-It contains 225 cases in ordered fixture groups. Existing IDs, order and
+It contains 234 cases in ordered fixture groups. Existing IDs, order and
 unrelated expected outcomes are preserved; new nominal cases are appended.
 The two Instagram/WhatsApp output expectations deliberately change as described
 in the [0.6.0 migration notes](CHANGELOG.md#060---2026-10-11). Python fingerprints
@@ -96,6 +96,16 @@ those workloads. Composite outputs charge each constituent, so reaching a limit
 with a long chain is a real measured outcome, not an omitted sample.
 Rate wording deliberately changes existing corpus outcomes without changing
 the corpus inputs; timings are not evidence of equivalent semantic work.
+
+`reviewed_recognition_scaling` is a separate report section for exact
+1/4/8/32 KiB failed-telephone inputs and 4/8/16/32 KiB electronic trailing
+parentheses. Each policy retains its text/diagnostic or genuine limit outcome
+and 100 individually timed calls, plus three 10 ms electronic deadline probes.
+These address measured pre-existing quadratic paths, not regressions introduced
+by the new notation grammar. Indexed phone traversal and linear parenthesis
+trimming retain admission and ownership; the deadline probes record completion
+or cancellation without a flaky wall-clock assertion. Frozen cohorts and the
+existing 279 policy scaling cases are unchanged.
 
 ## Python and measurement limits
 

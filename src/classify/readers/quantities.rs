@@ -127,7 +127,7 @@ fn prefixed_quantity(number: &str, label: &str) -> Result<Quantity, IssueCategor
 }
 
 fn amount_end(ctx: &Context<'_>, index: usize) -> usize {
-    let end = ctx.tokens[index].number_run_end;
+    let end = ctx.number_end(index);
     ctx.tokens
         .get(end + 1)
         .filter(|next| {

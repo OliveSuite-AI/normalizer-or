@@ -24,6 +24,8 @@ pub(super) struct Token<'a> {
     pub(super) range: SourceRange,
     pub(super) text: &'a str,
     pub(super) number_run_end: usize,
+    pub(super) phone_run_end: usize,
+    pub(super) digit_end: usize,
 }
 
 pub(super) struct Scanned<'a> {
@@ -81,7 +83,7 @@ pub(super) fn tokens<'a>(
             );
             continue;
         }
-        let Some(range) = expression_range(raw, matched.start(), &quotes) else {
+        let Some(range) = expression_range(raw, matched.start(), &quotes, control)? else {
             continue;
         };
         if crate::domain::electronic::looks_like(&text[range.start..range.end])
@@ -163,15 +165,30 @@ pub(super) fn tokens<'a>(
         }
     }
     account_periods(text, &mut tokens, control)?;
+    let mut digits = 0;
+    for token in &mut tokens {
+        control.check()?;
+        digits += token.text.bytes().filter(u8::is_ascii_digit).count();
+        token.digit_end = digits;
+    }
     for index in (0..tokens.len()).rev() {
         control.check()?;
         tokens[index].number_run_end = index;
+        tokens[index].phone_run_end = index;
         if let Some(next) = tokens.get(index + 1)
             && number_fragment(tokens[index].text)
             && number_fragment(next.text)
             && group_whitespace(text, tokens[index].range.end, next.range.start)
         {
             tokens[index].number_run_end = next.number_run_end;
+        }
+        if let Some(next) = tokens.get(index + 1)
+            && signals::telephone_group(next.text)
+            && text[tokens[index].range.end..next.range.start]
+                .chars()
+                .all(|ch| ch.is_whitespace() || matches!(ch, '(' | ')' | '-'))
+        {
+            tokens[index].phone_run_end = next.phone_run_end;
         }
     }
     Ok(Scanned {
@@ -232,5 +249,54 @@ fn append_token<'a>(tokens: &mut Vec<Token<'a>>, source: &'a SourceMap, range: S
         range,
         text: &source.text()[range.start..range.end],
         number_run_end: 0,
+        phone_run_end: 0,
+        digit_end: 0,
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn indexed_phone_groups_match_local_traversal_and_prefix_digit_counts() {
+        let rules = Resources::load().unwrap();
+        let control = WorkControl::default();
+        for text in [
+            "01 1 01 1",
+            "+90 555 123 45 67",
+            "0850 (222) 33-44",
+            "telefon 555\t123\n45 67",
+            "01 1a 12345b 3 4",
+            "0 555 123 45 67; 5 kg",
+            "TR33 0006 1005 1978 6457 8413 26.",
+        ] {
+            let source = SourceMap::new(text, &control).unwrap();
+            let scanned = tokens(&source, &rules, &control).unwrap();
+            let tokens = scanned.tokens;
+            for index in 0..tokens.len() {
+                let mut end = index;
+                while let Some(next) = tokens.get(end + 1) {
+                    if !signals::telephone_group(next.text)
+                        || !text[tokens[end].range.end..next.range.start]
+                            .chars()
+                            .all(|ch| ch.is_whitespace() || matches!(ch, '(' | ')' | '-'))
+                    {
+                        break;
+                    }
+                    end += 1;
+                }
+                assert_eq!(tokens[index].phone_run_end, end, "{text}");
+                for limit in index..=end {
+                    let indexed = tokens[limit].digit_end
+                        - index.checked_sub(1).map_or(0, |i| tokens[i].digit_end);
+                    let actual = text[tokens[index].range.start..tokens[limit].range.end]
+                        .bytes()
+                        .filter(u8::is_ascii_digit)
+                        .count();
+                    assert_eq!(indexed, actual, "{text}");
+                }
+            }
+        }
+    }
 }

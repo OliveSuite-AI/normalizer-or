@@ -146,8 +146,27 @@ pub(super) fn range_hint(text: &str, following_ile: bool) -> Option<Value> {
 
 pub(super) fn range(text: &str, tokens: &[Token<'_>], index: usize) -> Option<(Reading, usize)> {
     let first = tokens.get(index)?;
-    if !first.text.contains(['.', ':']) || !first.text.starts_with(|ch: char| ch.is_ascii_digit()) {
+    let endpoint = first.text.split(['-', '–']).next()?;
+    if !clock_shape(endpoint) {
         return None;
+    }
+
+    fn clock_shape(source: &str) -> bool {
+        let base = source.split(['\'', '’']).next().unwrap_or(source);
+        let separator = if base.contains(':') { ':' } else { '.' };
+        let mut parts = base.split(separator);
+        let Some(hour) = parts.next() else {
+            return false;
+        };
+        let Some(minute) = parts.next() else {
+            return false;
+        };
+        (1..=2).contains(&hour.len())
+            && minute.len() == 2
+            && (separator == ':' || parts.next().is_none())
+            && [hour, minute]
+                .iter()
+                .all(|part| part.bytes().all(|byte| byte.is_ascii_digit()))
     }
     let mut end = index;
     let mut separator = first.text.contains(['-', '–']);

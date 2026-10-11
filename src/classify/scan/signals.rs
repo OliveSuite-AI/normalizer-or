@@ -89,8 +89,19 @@ pub(in crate::classify) fn identifier(text: &str) -> bool {
     if text.contains('@') || text.contains("://") || text.starts_with("www.") {
         return true;
     }
+
     let base = text.split(['\'', '’']).next().unwrap_or(text);
     let letters = base.chars().any(|c| c.is_alphabetic() && !c.is_numeric());
     let digits = base.chars().any(char::is_numeric);
     digits && (letters || base.contains('_'))
+}
+
+pub(super) fn telephone_group(text: &str) -> bool {
+    (!text.is_empty()
+        && text
+            .chars()
+            .all(|ch| ch.is_ascii_digit() || matches!(ch, '+' | '-' | '(' | ')')))
+        || (text.len() <= 4
+            && text.starts_with(|ch: char| ch.is_ascii_digit())
+            && text.bytes().all(|byte| byte.is_ascii_alphanumeric()))
 }

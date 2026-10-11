@@ -79,12 +79,16 @@ guessing casing or meanings. Test all approved case families, invalid suffix
 ownership, mixed prose, protected identifiers, phrase boundaries and original
 Unicode coordinates. Text goldens are not speech-model/audio validation.
 
-The scanner indexes numeric-run ends once for bounded money lookahead and
+The scanner indexes numeric/phone-run ends and prefix digit counts once for
+bounded lookahead and
 distinguishes paired quotation boundaries from suffix apostrophes. Keep
 recognition separate from strict value validation and share typed label metadata.
 Its incremental piece signals and complete tight-list admission stay separate
 from domain parsing and rendering. Rejecting a group must not invent candidates
 or hide genuine unresolved findings; source admission belongs with boundary claims.
+Queued independent address fields bound reader lookahead. Do not discard stale
+owners to recover from a conflicting claim. Electronic trimming counts
+parentheses once and updates the count while trimming, with cooperative checks.
 
 ## Change rules and tests
 

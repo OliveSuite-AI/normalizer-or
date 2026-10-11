@@ -4,6 +4,7 @@ use crate::{
     SourceRange, WorkControl,
     domain::{
         composite::{Component, ComponentValue, Composite},
+        identifiers::Telephone,
         numeric::Numeric,
         quantities::Quantity,
     },
@@ -33,12 +34,12 @@ pub(super) fn read(
     {
         return Ok(None);
     }
-    let mut operand_end = first.number_run_end;
+    let mut operand_end = ctx.number_end(index);
     if (notation::label(first.text) || first.text.starts_with(['₺', '$', '€', '£']))
         && let Some(number) = ctx.tokens.get(index + 1)
         && numeric_piece(number.text)
     {
-        operand_end = number.number_run_end;
+        operand_end = ctx.number_end(index + 1);
     }
     if let Some(next) = ctx.tokens.get(operand_end + 1)
         && (notation::label(next.text) || notation::attached_money_tail(next.text).is_some())
@@ -61,14 +62,16 @@ pub(super) fn read(
     }
     let mut end = index;
     let mut found = operator(first.text) || first.text.contains(['*', '×']);
+    let mut unsupported = false;
     let mut expecting_operand = operator(first.text) || first.text.ends_with(['*', '×']);
     while let Some(next) = ctx.tokens.get(end + 1) {
         control.check()?;
         if !scan::whitespace_between(ctx.text, ctx.tokens[end].range.end, next.range.start) {
             break;
         }
-        if operator(next.text) {
+        if scan::math_operator(next.text) {
             found = true;
+            unsupported |= !operator(next.text);
             end += 1;
             expecting_operand = true;
         } else if numeric_piece(next.text) || next.text.contains(['*', '×']) || expecting_operand {
@@ -84,6 +87,16 @@ pub(super) fn read(
     }
     let owner = SourceRange::new(first.range.start, ctx.tokens[end].range.end);
     let input = &ctx.text[owner.start..owner.end];
+    if unsupported {
+        return Ok(Some((
+            Reading::Unresolved(UnresolvedFinding::unresolved(
+                input,
+                FallbackClass::Expression,
+                IssueCategory::Unsupported,
+            )),
+            end,
+        )));
+    }
     let mut operators = Vec::new();
     for (offset, ch) in input.char_indices() {
         control.check()?;
@@ -143,6 +156,11 @@ pub(super) fn read(
         if body.is_empty() {
             return Ok(Some(failure(IssueCategory::InvalidExpression)));
         }
+        if (body.starts_with("+90") || body.starts_with('0'))
+            && Telephone::parse(body, false).is_some()
+        {
+            return Ok(Some(failure(IssueCategory::Unsupported)));
+        }
         let leading = raw.len() - raw.trim_start().len();
         let part = SourceRange::new(start + leading, start + leading + body.len());
         if part.start != start {
@@ -154,11 +172,21 @@ pub(super) fn read(
                     quantities += 1;
                     ComponentValue::Quantity(quantity)
                 }
-                Err(category) => return Ok(Some(failure(category))),
+                Err(category) => {
+                    return Ok(Some(failure(if arithmetic_continuation(body) {
+                        IssueCategory::Unsupported
+                    } else {
+                        category
+                    })));
+                }
             }
         } else {
             let Some(number) = Numeric::product_operand(body) else {
-                return Ok(Some(failure(IssueCategory::InvalidExpression)));
+                return Ok(Some(failure(if arithmetic_continuation(body) {
+                    IssueCategory::Unsupported
+                } else {
+                    IssueCategory::InvalidExpression
+                })));
             };
             counts &= number.is_count();
             ComponentValue::Numeric(number)
@@ -240,4 +268,11 @@ fn quantity_shaped(text: &str) -> bool {
     text.split_whitespace().any(notation::label)
         || notation::attached_quantity(text).is_some()
         || text.chars().any(|ch| matches!(ch, '₺' | '$' | '€' | '£'))
+}
+
+fn arithmetic_continuation(text: &str) -> bool {
+    text.char_indices().any(|(offset, ch)| {
+        let token = &text[offset..offset + ch.len_utf8()];
+        scan::math_operator(token) && !operator(token) && (offset > 0 || !matches!(ch, '+' | '-'))
+    })
 }

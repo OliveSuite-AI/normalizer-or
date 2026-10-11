@@ -131,6 +131,9 @@ spaced hyphen/en dash. `13:00-17:00` reads `on üç ila on yedi`;
 before a following `arasında`, use `ile`. A whole Range hint uses the same rule.
 Equal/decreasing endpoints retain written order, without guessing a duration,
 next day or timetable validity. Seconds remain unsupported.
+Grouped numeric ranges such as `2.000-3.000 kişi` and a date followed by a
+prose dash are not clock ranges. Clock-shaped but invalid endpoints remain
+whole unresolved ranges.
 `Toplam 25.` is not silently treated as an ordinal.
 
 ### Multiplication

@@ -1,6 +1,6 @@
 //! Source-local quotation, trimming and quantity separator signals.
-use crate::SourceRange;
 use crate::domain::lexicon;
+use crate::{NormalizeError, SourceRange, WorkControl};
 
 fn delimiter(ch: char) -> bool {
     matches!(
@@ -91,22 +91,28 @@ pub(in crate::classify) fn trimmed_range(
     (!body.is_empty()).then_some(SourceRange::new(start, start + body.len()))
 }
 
-pub(super) fn expression_range(text: &str, offset: usize, quotes: &[usize]) -> Option<SourceRange> {
+pub(super) fn expression_range(
+    text: &str,
+    offset: usize,
+    quotes: &[usize],
+    control: &WorkControl,
+) -> Result<Option<SourceRange>, NormalizeError> {
+    control.check()?;
     if text.starts_with('"') && text.contains('@') {
         let body = text.trim_end_matches([',', ';', '!']);
-        return Some(SourceRange::new(offset, offset + body.len()));
+        return Ok(Some(SourceRange::new(offset, offset + body.len())));
     }
-    let first = text
-        .char_indices()
-        .find(|(i, ch)| {
-            !matches!(ch, '(' | '[' | '{' | '«' | '"' | '“')
-                && quotes.binary_search(&(offset + i)).is_err()
-        })?
-        .0;
+    let Some((first, _)) = text.char_indices().find(|(i, ch)| {
+        !matches!(ch, '(' | '[' | '{' | '«' | '"' | '“')
+            && quotes.binary_search(&(offset + i)).is_err()
+    }) else {
+        return Ok(None);
+    };
     let leading = &text[first..];
     if crate::domain::electronic::looks_like(leading) {
         let mut body = leading;
         while let Some((i, ch)) = body.char_indices().next_back() {
+            control.check()?;
             if !matches!(ch, '.' | ',' | ';' | '!' | '»' | '"' | '”')
                 && quotes.binary_search(&(offset + first + i)).is_err()
             {
@@ -114,14 +120,23 @@ pub(super) fn expression_range(text: &str, offset: usize, quotes: &[usize]) -> O
             }
             body = &body[..i];
         }
-        while body.ends_with(')') && body.matches(')').count() > body.matches('(').count() {
+        let mut openings = 0;
+        let mut closings = 0;
+        for byte in body.bytes() {
+            control.check()?;
+            openings += usize::from(byte == b'(');
+            closings += usize::from(byte == b')');
+        }
+        while body.ends_with(')') && closings > openings {
+            control.check()?;
             body = &body[..body.len() - 1];
+            closings -= 1;
         }
         body = body.trim_end_matches([']', '}']);
         let start = offset + text.len() - leading.len();
-        return (!body.is_empty()).then_some(SourceRange::new(start, start + body.len()));
+        return Ok((!body.is_empty()).then_some(SourceRange::new(start, start + body.len())));
     }
-    trimmed_range(text, offset, quotes)
+    Ok(trimmed_range(text, offset, quotes))
 }
 
 pub(super) fn lexical_period(text: &str) -> bool {
@@ -159,4 +174,39 @@ pub(super) fn quantity_separators(text: &str, offset: usize, quotes: &[usize]) -
         }
     }
     separated && crate::notation::quantity_piece(&text[start..])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::{Duration, Instant};
+
+    #[test]
+    fn electronic_trimming_preserves_balances_and_observes_control() {
+        let control = WorkControl::default();
+        for (source, expected) in [
+            ("(https://ornek.com/(a))", "https://ornek.com/(a)"),
+            ("https://ornek.com/(a))", "https://ornek.com/(a)"),
+            ("https://ornek.com/(a).", "https://ornek.com/(a)"),
+            ("https://ornek.com/)))", "https://ornek.com/"),
+            ("https://ornek.com/)(a)", "https://ornek.com/)(a"),
+        ] {
+            let offset = 5;
+            let range = expression_range(source, offset, &[], &control)
+                .unwrap()
+                .unwrap();
+            assert_eq!(&source[range.start - offset..range.end - offset], expected);
+        }
+        let source = format!("https://ornek.com/{}", ")".repeat(16_000));
+        control.cancel();
+        assert_eq!(
+            expression_range(&source, 0, &[], &control),
+            Err(NormalizeError::Cancelled)
+        );
+        let expired = WorkControl::new(Some(Instant::now() - Duration::from_secs(1)));
+        assert_eq!(
+            expression_range(&source, 0, &[], &expired),
+            Err(NormalizeError::Cancelled)
+        );
+    }
 }

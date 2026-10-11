@@ -6,6 +6,8 @@ use serde_json::{Value, json};
 
 #[path = "../tests/support/policy_contract.rs"]
 mod policy_fixtures;
+#[path = "latency/recognition_scaling.rs"]
+mod recognition_scaling;
 
 fn options(case: &Value, policy: AmbiguityPolicy) -> NormalizeOptions {
     let mut options = NormalizeOptions {
@@ -471,6 +473,7 @@ fn main() {
         "snapshots":snapshots,
         "fallback_measurement":fallback_measurements(&normalizer, &corpus),
         "expanded_coverage_measurement":policy_contract_measurements(&normalizer),
+        "reviewed_recognition_scaling":recognition_scaling::measure(&normalizer),
     });
     use std::io::Write;
     let mut file = std::fs::OpenOptions::new()

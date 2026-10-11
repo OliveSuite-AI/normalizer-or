@@ -111,7 +111,8 @@ flat multiplication readings and contextual address fields. See the
 [normalization reference](https://github.com/erdemtuna/normalizer-tr/blob/main/docs/normalization.md)
 and [migration notes](https://github.com/erdemtuna/normalizer-tr/blob/main/CHANGELOG.md#unreleased)
 for intentional rate-reading and source-boundary changes. These additions do
-not imply a published package version.
+not imply a published package version. Mixed arithmetic and protected telephone
+operands remain unresolved; adjacent address fields keep independent ownership.
 
 ## License
 

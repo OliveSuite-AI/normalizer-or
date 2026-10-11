@@ -21,5 +21,6 @@
   "policy-contract/pronunciation-nominal.json",
   "policy-contract/numeric-tails.json",
   "policy-contract/temporal-notation.json",
-  "policy-contract/composite-notation.json"
+  "policy-contract/composite-notation.json",
+  "policy-contract/review-notation-admission.json"
 ]

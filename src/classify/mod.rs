@@ -46,13 +46,15 @@ pub(crate) fn collect(
     let scanned = scan::tokens(source, resources, control)?;
     let tokens = scanned.tokens;
     let address_fields = addresses::collect(text, control)?;
-    let mut address_fields = address_fields.into_iter().peekable();
     let phone_like = scan::phones(text, &tokens, resources, control)?;
     let bounds = Boundaries::new(&tokens, &phone_like, &scanned.catalog_groups);
-    let ctx = Context {
-        text,
-        tokens: &tokens,
-    };
+    let mut address_fields = address_fields
+        .into_iter()
+        .map(|field| {
+            let start = bounds.next_at(field.range.start);
+            (field, start)
+        })
+        .peekable();
     let mut candidates = Vec::new();
     let mut index = 0;
     let mut hint_index = 0;
@@ -60,11 +62,22 @@ pub(crate) fn collect(
         control.check()?;
         let address = if address_fields
             .peek()
-            .is_some_and(|field| field.range.start == tokens[index].range.start)
+            .is_some_and(|(field, _)| field.range.start == tokens[index].range.start)
         {
-            address_fields.next()
+            address_fields.next().map(|(field, _)| field)
         } else {
             None
+        };
+        // Independent address owners bound lookahead before any reader is invoked.
+        let end = address_fields
+            .peek()
+            .map_or(tokens.len(), |(_, start)| *start);
+        if end <= index {
+            return Err(NormalizeError::Internal);
+        }
+        let ctx = Context {
+            text,
+            tokens: &tokens[..end],
         };
         let detected = address.as_ref().map(|field| Claim {
             range: field.range,

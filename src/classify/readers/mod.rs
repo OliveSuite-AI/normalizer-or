@@ -30,12 +30,16 @@ pub(super) struct Context<'a> {
 }
 
 impl Context<'_> {
+    pub(super) fn number_end(&self, index: usize) -> usize {
+        self.tokens[index].number_run_end.min(self.tokens.len() - 1)
+    }
+
     pub(super) fn money_end(&self, index: usize) -> Option<usize> {
         let token = self.tokens[index];
         if !scan::number_fragment(token.text) {
             return None;
         }
-        let end = token.number_run_end;
+        let end = self.number_end(index);
         let next = self.tokens.get(end + 1)?;
         let spaced = end > index
             && numbers::currency_marker(next.text)
@@ -155,7 +159,7 @@ pub(super) fn read(
                 annotate(
                     (
                         Err(IssueCategory::Unsupported),
-                        bounds.next_at(phone.end) - 1,
+                        bounds.next_at(phone.end).min(ctx.tokens.len()) - 1,
                     ),
                     FallbackClass::Identifier,
                 )

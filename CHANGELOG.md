@@ -20,6 +20,13 @@ Platform requirements are in the [README](README.md) and
   postal digits/labels and locality separators.
 - Correct grouped-account punctuation and continuation ownership, including
   component-hint and invalid-prefix escapes.
+- Bound product lookahead at independent address fields, reject mixed arithmetic
+  as one expression and exclude complete protected telephone operands.
+- Keep grouped numeric ranges and date-plus-dash prose out of clock-range
+  admission without weakening invalid clock validation.
+- Remove pre-existing quadratic failed-telephone lookahead and electronic
+  parenthesis trimming. Preserve policy outcomes and add cooperative checks
+  during electronic boundary scanning.
 
 ### Migration
 
