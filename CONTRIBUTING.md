@@ -92,6 +92,20 @@ parentheses once and updates the count while trimming, with cooperative checks.
 
 ## Change rules and tests
 
+State the purpose and acceptance examples before expanding coverage: positive
+readings, forms that must remain rejected, and important mixed contexts.
+Keep tightly coupled implementation/tests together; separate unrelated refactors
+from behavior changes rather than impose a PR line-count limit. For large changes,
+use independent review when available, not a mandatory second-person approval.
+
+CI checks public Rust compatibility against the PR base and freezes Python
+call defaults/records and Serde labels in tests. The public behavior artifact
+shows before/after outcomes from the same shared fixture inputs and all three
+policies. It is review evidence, not another expectation catalog: intentional
+changes still require reviewed goldens and migration notes. Rust breaking API
+changes fail the patch-level compatibility check even when a version is bumped;
+changing that policy requires an explicit breaking-change decision.
+
 Add positive, negative and mixed-sentence tests. Assert completeness, issue
 scope and byte ranges as well as text. Preserve matched-invalid compounds
 instead of rewriting their fragments. Reuse exact-number/morphology helpers;
@@ -141,11 +155,49 @@ cargo doc --locked --no-deps --all-features
 .\.venv\Scripts\python.exe -m ruff check bindings\python benches scripts
 .\.venv\Scripts\python.exe -m ruff format --check bindings\python benches scripts
 .\.venv\Scripts\python.exe -m mypy bindings\python\python --check-untyped-defs
+.\.venv\Scripts\python.exe -m unittest discover -s scripts\tests -t .
+.\.venv\Scripts\python.exe -m scripts.ci_checks pins
 ```
 
 Rebuild/reinstall the binding after native/facade changes before running its
 tests. CI also checks default/no-default Rust configurations and installed-wheel
 tests, without models.
+
+`scripts` is a stdlib-only development package, not part of the installed
+library. Run its CLI modules from the repository root with
+`python -m scripts.<tool>`. Shared paths/report IO and fixture loading live in
+`scripts/common.py`; tooling tests live in `scripts/tests/`, and standalone Rust
+probes/consumers in `scripts/rust/`. `scripts/verify.ps1` remains the full local
+verification entry point.
+
+`tests/reader_interactions.rs` generates combinations around the reviewed
+clock/range, arithmetic/address and electronic-boundary failures. It uses the
+existing proptest framework, not a separate fuzz toolchain. Reproduce and expand
+a recorded failure with standard controls:
+
+```powershell
+$env:PROPTEST_CASES = '2048'
+$env:PROPTEST_RNG_SEED = '12345'
+cargo test --locked --test reader_interactions
+Remove-Item Env:PROPTEST_CASES, Env:PROPTEST_RNG_SEED
+```
+
+Retain minimized failures as shared Rust/Python regressions. Track useful
+evidence through ordinary issues/PRs: regressions found after release, review
+rework and CI feedback duration, not lines changed or PR counts.
+
+## Dependency maintenance
+
+Dependabot proposes related Cargo, Python-tool and Actions updates. Keep exact
+pins coherent across manifests, `requirements-dev.txt`, `constraints.lock` and
+inline workflow tool versions; `python -m scripts.ci_checks pins` checks the Python
+duplication. Regenerate constraints in a fresh development environment, not a
+machine with unrelated packages, and review platform-specific entries.
+
+RustSec and the isolated Python development/build environment are audited on
+dependency/workflow PRs, scheduled maintenance and release builds. Network/tool
+failures are failures, not clean audits. Core/binding consumers still require
+no Python runtime dependency. There is no automatic dependency merge.
 
 ## Full verification
 
@@ -187,10 +239,31 @@ PyPI publication requires a matching `v<version>` tag, `publish=true`, the `pypi
 environment and its configured Trusted Publisher. Only the publish job has OIDC
 permission; no persistent PyPI token is stored.
 
+Publishing preflight requires the tagged commit to be in `main` history and its
+latest main-push CI run to have succeeded. A green run on another revision is
+not release evidence. The `pypi` environment requests explicit owner approval
+(self-approval is allowed) and permits release tags only. Build-only dispatch
+does not require a release tag or upload anything.
+
 Publish the core to crates.io using owner-configured Cargo authentication, from
 the same clean revision and byte-identical reviewed archive. The internal
 Rust/Python companion keeps `publish = false`. Verify fresh registry consumers
 and live checksums afterward.
+
+The publish job verifies every PyPI file against `release-manifest.json` and
+exercises a fresh installed-wheel consumer. After owner-controlled crates.io
+publication, check both registries from the release checkout with a downloaded
+`verified-release` artifact and a new output directory:
+
+```powershell
+python -m scripts.release_artifacts registry <verified-directory> --registry pypi --registry crates --output <new-output-directory>
+```
+
+Each registry reports verified, not-published or failed independently. Missing
+publication, checksum differences and failed consumers do not produce success.
+Response-read timeouts retain a failed registry result and do not prevent other
+requested checks; the final report still causes a nonzero outcome.
+The verifier never uploads or retries publication.
 
 Never paste credentials into chat, command arguments or source. If an upload has
 an uncertain result, inspect the registry before retrying. Do not reuse a version
