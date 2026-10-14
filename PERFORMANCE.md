@@ -1,75 +1,110 @@
 # Performance and measurement
 
-The development target is warm release Rust **p95 < 1 ms**, separately for
-short (1-256) and medium (257-1024) original UTF-8 byte cohorts. The snapshot below
-met this host-specific target; it is not a universal SLA, a hosted CI timing
-gate or an end-to-end speech-generation guarantee.
+Use these measurements to compare equivalent normalization work and identify
+scaling costs, not to promise speech-generation latency. The development target
+is warm release Rust **p95 < 1 ms** for short (1-256) and medium (257-1024)
+original UTF-8 byte cohorts. It is host-specific, not a universal SLA or hosted
+CI timing gate. Long inputs, fallback amplification and cooperative deadlines
+have separate diagnostics.
 
-The public inputs are in `benches/corpus.json` and `benches/intent-corpus.json`.
-Do not shrink the corpus, weaken validation or remove slow cases to claim
-improvement. Current semantic outcomes are checked independently by the
-characterization and class tests.
+## Run a comparison
 
-Passing those frozen cohorts does not cover every scaling path. The
-[reviewed boundary regressions](docs/normalization.md#reviewed-boundary-regressions-050)
-also exercise single malformed numeric tokens and cooperative control checks.
-Cooperative deadlines are not hard latency guarantees.
+First provision the [development environment](CONTRIBUTING.md#set-up).
+Reference, candidate and comparison-tooling checkouts must be committed, unchanged
+and contain the same `benches/latency/workload_inventory.json`. Keep the host free
+of competing builds or samplers; do not change power settings or stop other work.
 
-## Reproduce
-
-### PR evidence
-
-The non-required **Performance evidence** workflow compares exact base/head
-release builds serially on the same runner, with three paired repetitions and
-alternating order. It retains this sampler's inputs, warmups, call disposal,
-outliers and separate policy/scaling sections. The Actions summary links raw
-reports and checked comparisons; slower timings alone do not fail a PR.
-
-Input fingerprints and outcomes must agree before a timing ratio is interpreted
-as equivalent work. Public policy outcomes are checked with the same probe
-against both cores; changed work is labelled non-comparable, not an optimization.
-Build/tool/report failures remain failures. No hosted one-millisecond gate or
-new heap-allocation claim is made.
-
-Both comparison CLIs require clean tracked sources and check source/revision
-drift before emitting a successful comparison. Reports capture base, head and
-probe-tooling revisions before building. Unrelated untracked files and ignored
-build outputs are allowed; use an unchanged checkout for the entire run.
-
-Run locally against a separate baseline checkout and new output directory:
+For the current version-two inventory, this clean instrumentation reference is
+available in the repository history. From the candidate checkout:
 
 ```powershell
-python -m scripts.compare_performance --base <baseline-checkout> --output <new-output-directory>
+$python = (Resolve-Path .\.venv\Scripts\python.exe).Path
+$referenceSha = '233c099cf25599ee13193d10e0a2260851f3eced'
+$reference = Join-Path (Split-Path (Get-Location).Path -Parent) 'normalizer-tr-reference'
+$output = Join-Path $env:TEMP 'normalizer-tr-performance-01'
+git worktree add --detach $reference $referenceSha
+& $python -m scripts.compare_performance --base $reference --output $output
 ```
 
-Keep the host-specific target below for local verification. Hosted comparisons
-provide regression evidence, not a substitute for reviewing semantics or a
-universal latency promise.
+Use a new reference directory and output path; neither should already exist.
+For another approved inventory, choose a clean instrumentation-only reference
+containing that same catalog. The candidate defaults to the current checkout;
+`--head <candidate-checkout>` allows a separate candidate while retaining the
+current checkout as tooling. Timings are always measured freshly, never reused
+from historical reports.
 
-### Full local verification
+If preflight reports a missing version-two inventory or changed catalog, stop
+and choose compatible instrumented sources. Native and installed-Python reports
+require **schema version 2** and an explicit kind. Regenerate old reports;
+there is no legacy reader, repaired-report adapter or missing-evidence skip.
+The public library API is unaffected by this development-artifact format change.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) to provision the isolated Python tools
-and advisory checker/database. From a clean committed Windows checkout:
+### Hosted PR evidence
 
-```powershell
-.\scripts\verify.ps1 -PythonPath <absolute-build-python> -RustupHome <optional-isolated-rustup> -OutputDirectory <new-absolute-directory>
-```
+The non-required **Performance evidence** workflow first checks whether native
+measurement is relevant. On PR open/reopen it examines the full PR diff; on
+subsequent pushes it compares the previous and current heads, not the accumulated
+PR diff. Documentation, media, ordinary test-only and Python-facade or
+installed-sampler changes skip the expensive native comparison. Rust sources/data,
+native workloads/fixtures, dependencies/toolchain or measurement tooling changes
+still run it. The small
+scope job records the decision; unavailable or mismatched source evidence fails
+rather than pretending the change is irrelevant.
 
-Omit `-RustupHome` when using the normal installed toolchain. The output path
-must be new; reports and packages are never overwritten.
+Manual dispatch always requests measurement. Documentation-only updates do not
+cancel a relevant comparison already running; a newer relevant update supersedes
+an older measurement. Retained artifacts identify the revisions actually
+measured, not a later documentation-only head.
 
-The serial command verifies source/tests/docs, clean packages and external
-consumers, then emits `manifest.json` and `summary.txt`. The manifest links
-source HEAD, current normalizer identity, compiler/build/host context, corpus/
-native-binary hashes, stage results, Cargo VCS and exact package checksums.
-It does not commit, publish, run models or change global tools/settings.
-Dependent Cargo stages are serial to avoid artifact races.
+When selected, the workflow checks out the exact PR head and measures three
+fresh serial base/head pairs with alternating order.
+Ordinary PRs use their actual base; manual dispatch uses the requested commit
+or tag. Build, source, inventory and report failures fail the job. Slower valid
+timings alone do not.
 
-For the native sampler alone, use a new output path:
+One explicit instrumentation transition needs a different measurement reference:
+the pre-v2 PR base `e82bb205c091ca65d97ea8d24a7dcdb6d4fb511b` uses the frozen v2
+reference `233c099cf25599ee13193d10e0a2260851f3eced`. That reviewed reference keeps
+the production engine unchanged while adding the evidence needed to measure it.
+This is **not a literal PR-base timing comparison**. `comparison_basis` records
+both revisions and the reason in `comparison.json`, and the Actions summary
+identifies them before presenting ratios. Any other substitution is rejected.
+Required public-API and policy compatibility checks still use the actual PR base.
+When main contains v2 instrumentation, new PRs use that actual base automatically.
 
-```powershell
-cargo bench --locked --features serde --bench latency -- --output <new-absolute-report.json>
-```
+The job has a **90-minute ceiling** and uploads retained evidence with compression
+level 6. These are capacity settings, not runtime or upload guarantees. One local
+Windows reference run took about 38 minutes and produced roughly 1 GB of raw
+reports, compressing to about 25 MB. Allow space for raw evidence and both build
+trees; other hosts and workloads can differ substantially.
+
+## Interpret the evidence
+
+Start with `summary.md`, then inspect `comparison.json` for every checked long
+row, not only the five largest comparable p95 ratios shown per suite/repetition.
+Raw base/head reports retain exact text/options and complete outcomes.
+
+The ratio is **head p95 / base p95**: `1.10` means 10% slower and `0.90` means 10%
+faster for that comparable row. Read absolute times and p50 as well as tails.
+Three repetitions help expose variation; a single ratio is not an adoption rule.
+
+| Work label | Meaning |
+|---|---|
+| `result (complete)` | The call returned fully resolved normalization work. |
+| `result (incomplete)` | The call returned preserved unresolved spans and issues. |
+| `error: LimitExceeded (Result)` or another error | The call failed; its timing is not successful-output throughput. |
+| `non-comparable` | Inputs/options or full semantic outcomes changed; both timings remain, but no optimization ratio is assigned. |
+
+Full outcome equality determines comparability; compact labels are descriptive,
+not a weaker substitute. Genuine limit failures remain measured work. Deadlines
+are separate observations without ordinary ratios or hard wall-clock assertions.
+Shared-host noise can be large: review matched workload, size and policy medians
+and tails rather than using global extremes to dismiss counterevidence.
+
+Adopt an optimization only with repeatable full-call benefit beyond observed
+variation and no meaningful counter-path regression. Verified simpler mapping
+storage can justify consideration without a latency gain, but does not waive
+behavior fidelity or regression checks. Text tests are not audio validation.
 
 ## Native methodology
 
@@ -82,109 +117,97 @@ cargo bench --locked --features serde --bench latency -- --output <new-absolute-
 - Three repetitions are retained by the full verifier; results are not replaced
   by a batched average or confidence interval.
 
-The separate `fallback_measurement` uses the same frozen
-cohorts, 2,000 warmups and 10,000 individually timed calls per cohort.
-The original Preserve/Reject aggregate/order/corpus are unchanged. Fallback
-results are not semantically equivalent to preservation/rejection, so do not
-mix their samples into that aggregate or label differences as an optimization.
-Python reports follow the same separation, including fallback-only concurrent
-calls. No new universal latency promise is made for amplified code-point output.
+The public cohorts live in `benches/corpus.json` and `benches/intent-corpus.json`.
+Separate Fallback and policy-contract cohorts retain the same warmups and sample
+counts; do not mix work across policies. Ordered policy fixtures live in
+`tests/fixtures/policy-contract.json` and are shared with Rust/Python checks.
 
-Policy-contract measurements retain the existing `expanded_coverage_measurement`
-JSON key for report compatibility without changing the frozen inputs, original
-aggregate/order or existing report fields. Reviewed cases come from
-`tests/fixtures/policy-contract.json`, shared with Rust/Python tests.
-It contains 234 cases in ordered fixture groups. Existing IDs, order and
-unrelated expected outcomes are preserved; new nominal cases are appended.
-The two Instagram/WhatsApp output expectations deliberately change as described
-in the [0.6.0 migration notes](CHANGELOG.md#060---2026-10-11). Python fingerprints
-and manifests cover the catalog and every referenced file, not just the catalog
-itself.
-Each short/medium policy cohort is separate, with 2,000 warmups and 10,000 calls.
-Golden outcomes are checked before/after timing; class counts and exact inputs
-are validated by the verifier. Native reports also retain 4/16/32 KiB grouping,
-quotation/list, single malformed comma/dot tokens, mixed quantity lists,
-name/phrase/prefix-miss/rejected-list and decomposed-Unicode
-scaling diagnostics. These workloads are not exhaustive complexity checks.
+Long workloads have 100 individually timed full calls without added warmup.
+The ordered inventory declares complete coverage across malformed numeric tokens,
+products/addresses, identifiers, Unicode, hints and genuine limits. Preparation
+checks the actual recipe keys before initialization or timing; emission checks
+coverage again. Neither guard replaces independent semantic checks.
 
-The 0.6.0 scaling diagnostics add possessive chains, plural combinations,
-suffixes with multiple grammatical meanings, phrases, wrong vowel harmony and
-single long name tails. Name suffix matching is bounded and does not render
-rejected candidate outputs. Catalog consistency is checked once during
-initialization; include that cost in the first constructor measurement, not
-cached constructor or warm call timings. Differences between workloads that
-produce different normalized text do not establish a speedup.
+The first process initialization is separate from 100 subsequent same-process
+constructor calls, which are **not cold starts**. Recognition diagnostics include
+three 10 ms electronic deadline observations; cancellation is cooperative, not
+a hard latency guarantee. See [reviewed boundaries](docs/normalization.md#reviewed-boundary-regressions-050).
 
-The first process initialization is recorded separately from 100 later cached
-same-process constructor calls. Those later calls are **not cold starts**.
-Large 4/16/32 KiB inputs, maximum hints, candidate/result errors and long
-identifiers are separate scaling diagnostics, not 1 ms guarantees.
+Keep frozen inputs/order, default-options construction, disposal and outliers.
+Do not shrink corpora, regenerate unrelated goldens or drop slow/error rows to
+improve an aggregate. Exact snapshots, independent checks, fingerprints and
+serialization stay outside call timers. The buffered JSON writer checks its
+final flush and avoids an additional full serialized-string copy; it still
+retains the full report tree and establishes no measured peak-memory claim.
 
-The 0.7.0 scaling cases cover numeric/copular tails, quantity possession,
-written-order rates, clocks/date tails, account periods, contextual address
-fields and long flat products. Source ownership and control checks are part of
-those workloads. Composite outputs charge each constituent, so reaching a limit
-with a long chain is a real measured outcome, not an omitted sample.
-Rate wording deliberately changes existing corpus outcomes without changing
-the corpus inputs; timings are not evidence of equivalent semantic work.
+To run only the native sampler, use a new report path:
 
-`reviewed_recognition_scaling` is a separate report section for exact
-1/4/8/32 KiB failed-telephone inputs and 4/8/16/32 KiB electronic trailing
-parentheses. Each policy retains its text/diagnostic or genuine limit outcome
-and 100 individually timed calls, plus three 10 ms electronic deadline probes.
-Scaling rows also retain exact input/options snapshots outside the timed loop;
-the comparison hashes these snapshots and requires equal identities and outcomes.
-Older scaling reports without snapshots remain readable but have no timing ratio.
-These address measured pre-existing quadratic paths, not regressions introduced
-by the new notation grammar. Indexed phone traversal and linear parenthesis
-trimming retain admission and ownership; the deadline probes record completion
-or cancellation without a flaky wall-clock assertion. Frozen cohorts and the
-existing 279 policy scaling cases are unchanged.
+```powershell
+cargo bench --locked --features serde --bench latency -- --output <new-absolute-report.json>
+```
 
 ## Python and measurement limits
 
-Installed Python measurements include public argument validation, native Rust
-work, marshaling and result/error disposal. Eight-thread public-call timings
-are separate from the Rust target and from model/worker/audio costs.
-Native allocation/peak instrumentation is unavailable; no inferred allocation
-counts or peak-memory claims are made.
+Rebuild, reinstall and test the exact wheel with one designated environment
+before sampling; version equality alone cannot detect a stale native module.
+Use the [wheel build command](bindings/python/README.md#development-and-verification)
+with the designated interpreter, install that fresh wheel with
+`& $python -m pip install --force-reinstall --no-deps <wheel-path>`, then run its
+installed tests from [CONTRIBUTING.md](CONTRIBUTING.md#checks). From clean committed
+source, with that same interpreter:
 
-Record host/build context without changing power settings or stopping other
-work. Shared-host load varies; GitHub-hosted runners and other hardware are not
-assumed equivalent.
+```powershell
+& $python -m benches.python_latency --output <new-absolute-python-report.json>
+```
 
-## Development measurement snapshot
+Sequential cohorts use 2,000 warmups and 10,000 calls, including public argument
+validation, native work, marshaling and result/error disposal. Separate
+eight-thread cohorts use 1,000 calls and measure invocation/GIL wait, not executor
+queueing, equality checks or disposal. Do not combine these methods or assign
+Rust/Python ratios or a Python one-millisecond gate. A later section's first
+constructor is not first-process initialization.
 
-This comparison used the captured feature implementation
-[`a4e3055`](https://github.com/erdemtuna/normalizer-tr/commit/a4e3055) and the module
-refactor subsequently committed as
-[`0b3eb5d`](https://github.com/erdemtuna/normalizer-tr/commit/0b3eb5d).
-Measurements were collected before the refactor commit, not from a clean release
-revision. Both builds reported `normalizer-tr/0.4.0`; that identity alone does
-not distinguish these source snapshots.
+Snapshots retain exact options, original byte ranges, error messages/limit
+kinds and derived `fallback_used`. Native Serde and Python facade shapes remain
+distinct; the parser does not implement grammar or grapheme rules. Python
+coverage follows its frozen corpora and policy fixtures, not the native long
+matrix. Reports record source/interpreter and loaded-native identity; full
+verification matches the authoritative installed consumer and wheel.
 
-This historical snapshot predates the initialism and foreign-name additions;
-it is not a measurement of the 0.5.0 release revision.
+## Full local verification
 
-Host: AMD Ryzen AI 7 PRO 350, 8 cores / 16 logical processors, Windows 11
-Enterprise 26200. Native builds used Rust 1.99.0 x64 MSVC, optimized bench
-profile with `serde`; installed-wheel measurements used CPython 3.13.15.
-Sampling used the frozen original Preserve/Reject cohorts and methodology above,
-serially on the same shared host.
+Follow [CONTRIBUTING.md](CONTRIBUTING.md#full-verification) to provision the
+isolated tools and advisory database, then run from a clean Windows checkout:
 
-| Measurement / cohort | Baseline p95, microseconds | Refactored p95, microseconds |
-|---|---|---|
-| Native short, three repetitions | 27.4, 27.7, 22.9 | 27.1, 40.2, 20.8 |
-| Native medium, three repetitions | 196.7, 245.3, 187.5 | 185.9, 210.1, 194.6 |
-| Installed Python short, one repetition | 56.6 | 50.3 |
-| Installed Python medium, one repetition | 232.3 | 204.2 |
+```powershell
+.\scripts\verify.ps1 -PythonPath <absolute-build-python> -OutputDirectory <new-absolute-directory>
+```
 
-All native repetitions met the host-specific target. Alternating comparison
-runs retained class-level variability; these values do not establish a universal
-speedup, identical code generation or a guarantee for amplified fallback output.
-Frozen inputs and full benchmark outcomes were unchanged.
+Optional `-RustupHome` selects an existing isolated toolchain. Output must be new;
+reports/packages are not overwritten. The serial workflow checks packages,
+external consumers, source/tests/docs and measurements, then writes a checksum
+manifest. It does not publish, run speech models or change global settings.
 
-Raw reports and packages remain local development artifacts outside Git, not
-published release evidence. A clean-revision full verification remains required
-for release. Optimize measured bottlenecks or regressions; once the target is
-met, prioritize clarity over additional performance machinery.
+## Historical investigations
+
+The experiments below were deferred: no production list/address gate, ASCII
+mapping optimization or direct code-point formatter was adopted.
+
+| Investigation | Why it was not adopted |
+|---|---|
+| [List scanning](https://github.com/erdemtuna/normalizer-tr/issues/25) | Target gains overlapped matched variation; positive-list counter-path costs were not cleared. |
+| [Address scanning](https://github.com/erdemtuna/normalizer-tr/issues/26) | Simple URL-negative gains were persuasive, but real-address counter-path warnings remained. |
+| [ASCII source mapping](https://github.com/erdemtuna/normalizer-tr/issues/28) | Boundary storage decreased, but repeated small-Unicode median/tail warnings remained. |
+| [Unicode formatting](https://github.com/erdemtuna/normalizer-tr/issues/29) | Successful scalar-fallback tails improved narrowly; family medians and controls did not clear the adoption criterion. |
+
+[PR #37](https://github.com/erdemtuna/normalizer-tr/pull/37) preserves the decisions
+and source/method attribution. Experimental commits and full local raw ledgers
+are not publicly fetchable release evidence. Non-adoption does not prove that
+every slowdown was caused by a candidate; anomalously fast baselines can also
+produce large ratios. Faster Result errors are not successful throughput.
+
+The [archived 0.4 development snapshot](https://github.com/erdemtuna/normalizer-tr/blob/0d4a5d259400a0810f71fca8cd50344eac8da33c/PERFORMANCE.md#development-measurement-snapshot)
+is historical, not a performance claim for the current release. Keep historical
+reports unchanged. Native allocator/peak measurements, separate serializer/write
+costs, hosted upload duration and audio validation are not established by these
+records. Prioritize clarity once measured requirements are met.

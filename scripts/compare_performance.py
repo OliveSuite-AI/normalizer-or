@@ -10,23 +10,50 @@ from pathlib import Path
 
 from .common import ROOT, check_source_revisions, source_revisions, write
 from .compare_contracts import run_comparison, semantic_outcome
+from .performance_report import (
+    VERSION,
+    admit_native,
+    inventory,
+    load,
+    validate_timing,
+)
 
 REPETITIONS = 3
 SAMPLES = 10000
 SCALING_SAMPLES = 100
 QUANTILES = ("p50_ns", "p95_ns", "p99_ns", "max_ns")
+SUMMARY_ROWS_PER_SUITE = 5
+PRE_V2_BASE_SHA = "e82bb205c091ca65d97ea8d24a7dcdb6d4fb511b"
+V2_REFERENCE_SHA = "233c099cf25599ee13193d10e0a2260851f3eced"
 
 
-def validate_timing(row, count=None):
-    values = [row[key] for key in QUANTILES]
-    if (
-        any(type(value) is not int or value <= 0 for value in values)
-        or values != sorted(values)
-        or type(row["count"]) is not int
-        or row["count"] <= 0
-        or (count is not None and row["count"] != count)
-    ):
-        raise RuntimeError(f"invalid or undersampled timing: {row}")
+def select_reference(pr_base, requested_base):
+    reference = pr_base or requested_base
+    if not reference or any(char.isspace() or ord(char) < 32 for char in reference):
+        raise RuntimeError("performance comparison requires a nonempty exact base ref")
+    if pr_base == PRE_V2_BASE_SHA:
+        return V2_REFERENCE_SHA
+    return reference
+
+
+def comparison_basis(requested_sha, measured_sha):
+    if requested_sha == measured_sha:
+        kind = "requested-base"
+        explanation = "Measurements use the requested base revision."
+    elif (requested_sha, measured_sha) == (PRE_V2_BASE_SHA, V2_REFERENCE_SHA):
+        kind = "v2-instrumented-reference"
+        explanation = (
+            "The requested PR base predates version-two instrumentation. "
+            "Measurements use the frozen instrumented reference, not the literal PR base."
+        )
+    else:
+        raise RuntimeError("unapproved performance reference substitution")
+    return {
+        "kind": kind,
+        "requested_base_sha": requested_sha,
+        "measurement_base_sha": measured_sha,
+        "explanation": explanation,
+    }
 
 
 def snapshots_equal(base, head):
@@ -58,40 +85,24 @@ def timing_rows(base, head, comparable):
     return rows
 
 
-def scaling_fingerprint(row):
-    fingerprint = row.get("input_fingerprint")
-    if fingerprint is None:
-        return None
-    if (
-        not isinstance(fingerprint, dict)
-        or set(fingerprint) != {"text", "options"}
-        or not isinstance(fingerprint["text"], str)
-        or len(fingerprint["text"].encode("utf-8")) != row["bytes"]
-        or not isinstance(fingerprint["options"], dict)
-        or not isinstance(fingerprint["options"].get("ambiguity_policy"), str)
-        or fingerprint["options"]["ambiguity_policy"].lower() != row["policy"]
-        or not isinstance(fingerprint["options"].get("hints"), list)
-    ):
-        raise RuntimeError(f"invalid recognition input fingerprint: {row['path']}")
-    return hashlib.sha256(
-        json.dumps(
-            fingerprint, sort_keys=True, ensure_ascii=False, separators=(",", ":")
-        ).encode("utf-8")
-    ).hexdigest()
+def outcome_summary(outcome):
+    if "result" in outcome:
+        return {"kind": "result", "complete": outcome["result"]["complete"]}
+    summary = {"kind": "error", "error": outcome["error"]}
+    if "limit" in outcome:
+        summary["limit"] = outcome["limit"]
+    return summary
 
 
-def index_scaling_rows(rows):
-    indexed = {}
-    for row in rows:
-        key = (row["path"], row["bytes"], row["policy"])
-        if key in indexed:
-            raise RuntimeError(f"duplicate recognition scaling workload: {key}")
-        validate_timing(row["timing"], SCALING_SAMPLES)
-        indexed[key] = {**row, "input_sha256": scaling_fingerprint(row)}
-    return indexed
+def outcome_label(summary):
+    if summary["kind"] == "result":
+        return "result (complete)" if summary["complete"] else "result (incomplete)"
+    label = f"error: {summary['error']}"
+    return f"{label} ({summary['limit']})" if "limit" in summary else label
 
 
 def compare(base, head, same_inputs, contract_changes=()):
+    before_report, after_report = admit_native(base), admit_native(head)
     if base["method"] != head["method"]:
         raise RuntimeError("sampler methods differ")
     for report in (base, head):
@@ -122,10 +133,23 @@ def compare(base, head, same_inputs, contract_changes=()):
         base["fallback_measurement"]["snapshots"],
         head["fallback_measurement"]["snapshots"],
     )
-    policy_inputs_equal = (
-        base["expanded_coverage_measurement"]["input_cases"]
-        == head["expanded_coverage_measurement"]["input_cases"]
-    ) and not any(row["id"].startswith(("base:", "head:")) for row in contract_changes)
+    same_policy = (
+        (
+            base["expanded_coverage_measurement"]["input_cases"]
+            == head["expanded_coverage_measurement"]["input_cases"]
+        )
+        and (
+            base["expanded_coverage_measurement"]["inputs"]
+            == head["expanded_coverage_measurement"]["inputs"]
+        )
+        and snapshots_equal(
+            base["expanded_coverage_measurement"]["snapshots"],
+            head["expanded_coverage_measurement"]["snapshots"],
+        )
+        and not any(
+            row["id"].startswith(("base:", "head:")) for row in contract_changes
+        )
+    )
     result = {
         "primary": timing_rows(base["cohorts"], head["cohorts"], same_primary),
         "fallback": timing_rows(
@@ -136,7 +160,7 @@ def compare(base, head, same_inputs, contract_changes=()):
         "policy_contract": timing_rows(
             base["expanded_coverage_measurement"]["cohorts"],
             head["expanded_coverage_measurement"]["cohorts"],
-            policy_inputs_equal,
+            same_policy,
         ),
         "per_class_policy": {
             "shared": timing_rows(
@@ -160,28 +184,34 @@ def compare(base, head, same_inputs, contract_changes=()):
             ),
         },
     }
-    before = index_scaling_rows(base["reviewed_recognition_scaling"]["scaling"])
-    after = index_scaling_rows(head["reviewed_recognition_scaling"]["scaling"])
-    if not before or before.keys() != after.keys():
-        raise RuntimeError("recognition scaling workloads differ")
-    result["recognition_scaling"] = [
-        {
-            "path": key[0],
-            "bytes": key[1],
-            "policy": key[2],
-            "base_input_sha256": before[key]["input_sha256"],
-            "head_input_sha256": after[key]["input_sha256"],
-            **timing_rows(
-                {str(key): before[key]["timing"]},
-                {str(key): after[key]["timing"]},
-                before[key]["input_sha256"] is not None
-                and before[key]["input_sha256"] == after[key]["input_sha256"]
-                and semantic_outcome(before[key]["outcome"])
-                == semantic_outcome(after[key]["outcome"]),
-            )[0],
-        }
-        for key in before
-    ]
+    before = {row.key: row for row in before_report.scaling}
+    after = {row.key: row for row in after_report.scaling}
+    if tuple(before) != tuple(after):
+        raise RuntimeError("long workload order differs")
+    result["scaling"] = []
+    for key, row in before.items():
+        other = after[key]
+        reasons = []
+        if row.input_sha256 != other.input_sha256:
+            reasons.append("input/options changed")
+        if semantic_outcome(row.outcome) != semantic_outcome(other.outcome):
+            reasons.append("semantic outcome changed")
+        result["scaling"].append(
+            {
+                "suite": key[0],
+                "id": key[1],
+                "bytes": key[2],
+                "policy": key[3],
+                "base_input_sha256": row.input_sha256,
+                "head_input_sha256": other.input_sha256,
+                "base_outcome": outcome_summary(row.outcome),
+                "head_outcome": outcome_summary(other.outcome),
+                "reason": "; ".join(reasons) or None,
+                **timing_rows(
+                    {str(key): row.timing}, {str(key): other.timing}, not reasons
+                )[0],
+            }
+        )
     return result
 
 
@@ -228,14 +258,37 @@ def corpus_hash(root):
     ).hexdigest()
 
 
+def preflight(base, head):
+    for root in (base, head, ROOT):
+        if not (root / "benches" / "latency" / "workload_inventory.json").is_file():
+            raise RuntimeError(
+                f"{root}: missing version-two workload_inventory.json; use a clean "
+                "common instrumented reference and regenerate native/Python reports"
+            )
+    catalogs = [inventory(root)[0] for root in (base, head, ROOT)]
+    if any(value != catalogs[0] for value in catalogs[1:]):
+        raise RuntimeError(
+            "workload catalogs differ; use a clean common instrumented reference"
+        )
+    return catalogs[0]
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--base", required=True, type=Path)
     parser.add_argument("--head", default=ROOT, type=Path)
+    parser.add_argument("--requested-base", type=Path)
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
     base, head, output = args.base.resolve(), args.head.resolve(), args.output.resolve()
-    revisions = source_revisions(base, head, ROOT)
+    roots = (base, head, ROOT)
+    requested_base = base
+    if args.requested_base is not None:
+        requested_base = args.requested_base.resolve()
+        roots += (requested_base,)
+    revisions = source_revisions(*roots)
+    basis = comparison_basis(revisions[requested_base], revisions[base])
+    catalog = preflight(base, head)
     corpus_hashes = {"base": corpus_hash(base), "head": corpus_hash(head)}
     output.mkdir()
     contract_changes = run_comparison(base, head, output / "contracts")
@@ -250,7 +303,12 @@ def main():
         for name in order:
             path = output / f"{name}-{repetition + 1}.json"
             subprocess.run([executables[name], "--output", str(path)], check=True)
-            reports[name] = json.loads(path.read_text(encoding="utf-8"))
+            reports[name] = load(path)
+            if (
+                reports[name].get("source_sha")
+                != revisions[base if name == "base" else head]
+            ):
+                raise RuntimeError(f"{name} sampler source identity differs")
         paired.append(
             compare(
                 reports["base"],
@@ -260,7 +318,11 @@ def main():
             )
         )
     comparison = {
+        "schema_version": VERSION,
+        "report_kind": "native-comparison",
+        "workload_inventory": catalog,
         "base_sha": revisions[base],
+        "comparison_basis": basis,
         "head_sha": revisions[head],
         "tooling_sha": revisions[ROOT],
         "compiler": subprocess.check_output(["rustc", "-vV"], text=True),
@@ -275,6 +337,10 @@ def main():
     lines = [
         "## Native performance comparison",
         "",
+        f"Requested base: `{basis['requested_base_sha']}`; measured base: `{basis['measurement_base_sha']}`; head: `{revisions[head]}`.",
+        "",
+        basis["explanation"],
+        "",
         "Informational only. Ratios compare equivalent inputs/outcomes; changed work is not a speedup.",
         "",
         "| Repetition | Primary cohort | Base p95 (us) | Head p95 (us) | Ratio |",
@@ -288,8 +354,47 @@ def main():
                 f"| {row['head']['p95_ns'] / 1000:.1f} | {ratio} |"
             )
     lines.append(
-        "\nFull distributions, separate policies, and reviewed scaling cases: `comparison.json` and raw reports.\n"
+        "\nAll checked long-input comparisons (including work kinds and non-comparability reasons): `comparison.json`; complete input/options/outcomes: raw base/head reports. Comparable error timings measure failed work, not successful throughput.\n"
     )
+    lines.extend(
+        [
+            "| Repetition | Suite | Compared rows | Non-comparable rows |",
+            "|---|---|---:|---:|",
+        ]
+    )
+    for index, pair in enumerate(paired, 1):
+        suites = sorted({row["suite"] for row in pair["scaling"]})
+        for suite in suites:
+            selected = [row for row in pair["scaling"] if row["suite"] == suite]
+            lines.append(
+                f"| {index} | {suite} | {len(selected)} | {sum(not row['comparable'] for row in selected)} |"
+            )
+    lines.extend(
+        [
+            "",
+            f"Largest {SUMMARY_ROWS_PER_SUITE} comparable p95 ratios per suite/repetition below (informational, not adoption thresholds). All rows and non-comparability reasons remain in `comparison.json`.",
+            "",
+            "| Repetition | Suite / workload | Bytes | Policy | Base work | Head work | Base p95 (us) | Head p95 (us) | Ratio |",
+            "|---|---|---:|---|---|---|---:|---:|---:|",
+        ]
+    )
+    for index, pair in enumerate(paired, 1):
+        for suite in sorted({row["suite"] for row in pair["scaling"]}):
+            selected = sorted(
+                (
+                    row
+                    for row in pair["scaling"]
+                    if row["suite"] == suite and row["comparable"]
+                ),
+                key=lambda row: row["p95_ratio"],
+                reverse=True,
+            )[:SUMMARY_ROWS_PER_SUITE]
+            for row in selected:
+                lines.append(
+                    f"| {index} | {suite} / {row['id']} | {row['bytes']} | {row['policy']} "
+                    f"| {outcome_label(row['base_outcome'])} | {outcome_label(row['head_outcome'])} "
+                    f"| {row['base']['p95_ns'] / 1000:.1f} | {row['head']['p95_ns'] / 1000:.1f} | {row['p95_ratio']:.2f} |"
+                )
     summary = "\n".join(lines)
     (output / "summary.md").write_text(summary, encoding="utf-8")
     if os.environ.get("GITHUB_STEP_SUMMARY"):

@@ -7,6 +7,24 @@ Platform requirements are in the [README](README.md) and
 
 ## Unreleased
 
+- Include long-input and failed work in performance comparisons, with exact
+  input/options, full outcomes and explicit non-comparability. Native and
+  installed-Python reports require version two; regenerate older artifacts
+  instead of adapting them. Public library APIs, behavior and limits are unchanged.
+- Record the requested and measured baseline revisions explicitly. For the
+  known version-two instrumentation transition, hosted PR comparisons use the
+  frozen instrumented reference and run the complete measurements; other PRs
+  use their actual base. Public compatibility still checks the actual PR base.
+  See [PERFORMANCE.md](PERFORMANCE.md#hosted-pr-evidence) for the policy and usage.
+- Exclude Python bytecode caches from the core package's explicit source list,
+  so importing benchmark helpers does not break clean-source packaging.
+- Label successful and failed long-input work in checked comparisons and stream
+  native report serialization through a checked buffered writer. Frozen call
+  timing boundaries and full evidence remain unchanged.
+- Clarify fallback diagnostic strategies and make the measurement guide focus
+  on running and interpreting comparisons. General README navigation follows
+  main; release-specific references are explicitly labeled.
+
 ## 0.7.0 - 2026-10-11
 
 - Add bounded plural, six-person possession, case, locative-plus-ki and copular

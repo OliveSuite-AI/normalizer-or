@@ -2,18 +2,7 @@ name: Performance evidence
 
 on:
   pull_request:
-    paths:
-      - "src/**"
-      - "benches/**"
-      - "tests/fixtures/**"
-      - "tests/support/**"
-      - "Cargo.toml"
-      - "Cargo.lock"
-      - "rust-toolchain.toml"
-      - "scripts/compare_*.py"
-      - "scripts/common.py"
-      - "scripts/rust/contract_probe.rs"
-      - ".github/workflows/performance.yml"
+    types: [opened, reopened, synchronize]
   workflow_dispatch:
     inputs:
       base:
@@ -24,14 +13,44 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: performance-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  compare:
+  scope:
+    name: Select performance changes
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: head
+    outputs:
+      run: ${{ steps.scope.outputs.run }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          path: head
+          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        if: github.event_name == 'pull_request'
+        with:
+          path: scope-base
+          repository: ${{ github.event.action == 'synchronize' && github.event.pull_request.head.repo.full_name || github.event.pull_request.base.repo.full_name }}
+          ref: ${{ github.event.before || github.event.pull_request.base.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.13"
+      - name: Check the event's changed inputs and code
+        id: scope
+        run: python -m scripts.ci_checks performance-scope --base-checkout ../scope-base
+  compare:
+    needs: scope
+    if: needs.scope.outputs.run == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    concurrency:
+      group: performance-${{ github.ref }}
+      cancel-in-progress: true
     defaults:
       run:
         working-directory: head
@@ -39,24 +58,38 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           path: head
+          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.13"
+      - name: Select the declared measurement reference
+        id: reference
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          REQUESTED_BASE_REF: ${{ inputs.base }}
+        run: python -m scripts.ci_checks performance-reference
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           path: base
+          ref: ${{ steps.reference.outputs.reference }}
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          path: requested-base
           ref: ${{ github.event.pull_request.base.sha || inputs.base }}
           persist-credentials: false
       - uses: dtolnay/rust-toolchain@89b12181fb390509a0842a86cc55eeb8eb928c1d
         with:
           toolchain: "1.99.0"
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
-        with:
-          python-version: "3.13"
       - name: Measure paired release calls
-        run: python -m scripts.compare_performance --base ../base --output "$RUNNER_TEMP/performance"
+        run: python -m scripts.compare_performance --base ../base --requested-base ../requested-base --output "$RUNNER_TEMP/performance"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
           name: paired-native-performance
+          compression-level: 6
           path: |
             ${{ runner.temp }}/performance/*.json
             ${{ runner.temp }}/performance/*.md
