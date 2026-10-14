@@ -51,6 +51,11 @@ still run it. The small
 scope job records the decision; unavailable or mismatched source evidence fails
 rather than pretending the change is irrelevant.
 
+When extracting measurement tooling, update the path selection in
+`scripts/ci_checks.py` and test a latest-push diff containing only the new
+module. An older entry point remaining in the full PR diff does not select
+that later push.
+
 Manual dispatch always requests measurement. Documentation-only updates do not
 cancel a relevant comparison already running; a newer relevant update supersedes
 an older measurement. Retained artifacts identify the revisions actually
@@ -98,6 +103,9 @@ Three repetitions help expose variation; a single ratio is not an adoption rule.
 Full outcome equality determines comparability; compact labels are descriptive,
 not a weaker substitute. Genuine limit failures remain measured work. Deadlines
 are separate observations without ordinary ratios or hard wall-clock assertions.
+Each native report is validated against its own source checkout's policy
+fixtures. Appending reviewed fixtures does not invalidate the older baseline
+report, but changed policy cohorts remain non-comparable.
 Shared-host noise can be large: review matched workload, size and policy medians
 and tails rather than using global extremes to dismiss counterevidence.
 
