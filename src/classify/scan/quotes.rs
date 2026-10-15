@@ -58,22 +58,34 @@ impl OpenQuote {
 }
 
 pub(super) struct QuoteBoundaries {
-    offsets: Vec<usize>,
+    legacy_pairs: Vec<usize>,
+    membership: Option<Vec<usize>>,
     transparent: Vec<bool>,
 }
 
 impl QuoteBoundaries {
     pub(super) fn collect(text: &str, control: &WorkControl) -> Result<Self, NormalizeError> {
         let transparent = certify(text, control)?;
-        let offsets = merge(quotation_boundaries(text), &transparent, control)?;
+        let legacy_pairs = quotation_boundaries(text);
+        let membership = if transparent.is_empty() {
+            None
+        } else {
+            Some(merge(&legacy_pairs, &transparent, control)?)
+        };
         Ok(Self {
-            offsets,
+            legacy_pairs,
+            membership,
             transparent,
         })
     }
 
+    /// Sorted boundary membership, not opening/closing pairs.
     pub(super) fn offsets(&self) -> &[usize] {
-        &self.offsets
+        self.membership.as_deref().unwrap_or(&self.legacy_pairs)
+    }
+
+    pub(super) fn legacy_pairs(&self) -> &[usize] {
+        &self.legacy_pairs
     }
 
     pub(super) fn transparent(&self) -> &[bool] {
@@ -142,15 +154,15 @@ fn certify(text: &str, control: &WorkControl) -> Result<Vec<bool>, NormalizeErro
 }
 
 fn merge(
-    legacy: Vec<usize>,
+    legacy: &[usize],
     certified: &[bool],
     control: &WorkControl,
 ) -> Result<Vec<usize>, NormalizeError> {
     if certified.is_empty() {
-        return Ok(legacy);
+        return Ok(legacy.to_vec());
     }
     // Legacy grammar remains authoritative; certification only adds boundaries.
-    let mut legacy = legacy.into_iter().peekable();
+    let mut legacy = legacy.iter().copied().peekable();
     let mut merged = Vec::new();
     for (offset, transparent) in certified.iter().enumerate() {
         control.check()?;

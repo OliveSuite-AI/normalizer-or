@@ -11,6 +11,29 @@ Platform requirements are in the [README](README.md) and
 
 These changes are not included in published 0.7.0.
 
+- Keep unsupported suffixed telephone runs atomic under Preserve, Reject and
+  Fallback, including established malformed/incomplete runs and invalid
+  separators. `0532 123 45 67'den` now has one invalid owner over `[0,18)`,
+  instead of a successful suffixed Cardinal escaping its shortened owner.
+  Fallback spells the whole owner literally with one Identifier/InvalidForm
+  diagnostic. Valid unsuffixed telephone pronunciation and neighboring fields
+  remain unchanged; telephone suffixes and invalid separators are not accepted.
+  Migration: update text/segment/diagnostic snapshots and original byte ranges.
+  Previously accepted component hints such as `Hint(0,11,"digits")` and
+  `Hint(12,18,"cardinal")` now fail with `invalid_hint`, as required by whole-owner
+  validation. Public types, serialized labels, policy defaults and limits are
+  unchanged. No audio validation was performed.
+  Mixed hyphen groups, adjoining phone parentheses and non-composing tail
+  marks also retain one owner; phone-local closers do not escape as raw text,
+  and outer prose wrappers remain independent.
+  Marked closing-parenthesis graphemes no longer swallow the following token
+  or cause an extended claim to skip it. Adjacent identifiers/quantities/names
+  retain their own owners; standalone `)\u030112` now retains the closer and
+  reads the independent number. Marked semicolon/comma compounds are unchanged.
+  Repeated/empty tails after owned closers stay atomic and cannot quote away
+  the suffix of a later independent phone.
+  Empty-tail numeric compounds preserve confirmed outer parentheses without
+  stripping unmatched invalid local closers; pairing is indexed lazily per call.
 Supported standalone uppercase letters now receive primary Turkish letter names.
 This applies to ordinary capitals and unmarked initials, not just technical
 phrases. Default Preserve does not disable these primary readings.
@@ -48,6 +71,10 @@ speech-model or audio-quality improvement is claimed.
 
 ### Development tooling and maintenance
 
+- Separate telephone source ownership from IBAN coordination and compound
+  scanning from the common token/index pass. Group telephone acceptance tests
+  by their contract purpose; inputs, reading/policy behavior and public APIs
+  are unchanged by this extraction.
 - Separate serial performance orchestration, validated comparisons and Markdown
   presentation into focused modules. Register the extracted modules for
   latest-push performance evidence selection.

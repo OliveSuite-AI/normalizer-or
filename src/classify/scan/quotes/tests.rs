@@ -50,13 +50,13 @@ fn certification_preserves_interior_whitespace_and_legacy_boundaries() {
         certified[index] = true;
     }
     assert_eq!(
-        merge(vec![1, 7, 12], &certified, &WorkControl::default()).unwrap(),
+        merge(&[1, 7, 12], &certified, &WorkControl::default()).unwrap(),
         [0, 1, 7, 10, 12]
     );
     let cancelled = WorkControl::default();
     cancelled.cancel();
     assert_eq!(
-        merge(vec![], &certified, &cancelled),
+        merge(&[], &certified, &cancelled),
         Err(NormalizeError::Cancelled)
     );
 }
@@ -65,9 +65,11 @@ fn certification_preserves_interior_whitespace_and_legacy_boundaries() {
 fn collected_views_share_nested_certification_and_keep_no_quote_fast_path() {
     let quotes = QuoteBoundaries::collect("'‘S’'", &WorkControl::default()).unwrap();
     assert_eq!(quotes.offsets(), [0, 1, 5, 8]);
+    assert_eq!(quotes.legacy_pairs(), [0, 8]);
     for offset in quotes.offsets() {
         assert!(quotes.transparent()[*offset]);
     }
     let empty = QuoteBoundaries::collect("S", &WorkControl::default()).unwrap();
     assert!(empty.offsets().is_empty() && empty.transparent().is_empty());
+    assert!(empty.legacy_pairs().is_empty() && empty.membership.is_none());
 }

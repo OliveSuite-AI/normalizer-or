@@ -1,4 +1,5 @@
 //! Tokenization and indexed source traversal.
+mod compounds;
 mod lists;
 mod piece;
 mod punctuation;
@@ -19,6 +20,7 @@ use punctuation::{
 use quotes::QuoteBoundaries;
 pub(super) use signals::{
     group_whitespace, identifier, math_operator, number_fragment, phones, spaced_compound,
+    telephone_gap,
 };
 
 #[derive(Clone, Copy)]
@@ -57,6 +59,7 @@ pub(super) fn tokens<'a>(
     let quotes = quote_bounds.offsets();
     let catalog_groups = lists::groups(text, rules, quotes, control)?;
     let mut tokens = Vec::new();
+    let mut parentheses = None;
     let mut skip_until = 0;
     for matched in rules.tokens.find_iter(text) {
         control.check()?;
@@ -80,11 +83,23 @@ pub(super) fn tokens<'a>(
             continue;
         }
         if numeric_parenthesis_compound(raw) {
-            append_token(
-                &mut tokens,
-                source,
-                SourceRange::new(matched.start(), matched.end()),
-            );
+            if raw.contains(['\'', '’']) {
+                compounds::append(
+                    &mut tokens,
+                    source,
+                    raw,
+                    matched.start(),
+                    &quote_bounds,
+                    &mut parentheses,
+                    control,
+                )?;
+            } else {
+                append_token(
+                    &mut tokens,
+                    source,
+                    SourceRange::new(matched.start(), matched.end()),
+                );
+            }
             continue;
         }
         let Some(range) = expression_range(raw, matched.start(), quotes, control)? else {
@@ -188,9 +203,7 @@ pub(super) fn tokens<'a>(
         }
         if let Some(next) = tokens.get(index + 1)
             && signals::telephone_group(next.text)
-            && text[tokens[index].range.end..next.range.start]
-                .chars()
-                .all(|ch| ch.is_whitespace() || matches!(ch, '(' | ')' | '-'))
+            && telephone_gap(&text[tokens[index].range.end..next.range.start])
         {
             tokens[index].phone_run_end = next.phone_run_end;
         }
@@ -248,7 +261,20 @@ fn approved(groups: &[CatalogGroup], offset: usize) -> bool {
 }
 
 fn append_token<'a>(tokens: &mut Vec<Token<'a>>, source: &'a SourceMap, range: SourceRange) {
-    let range = source.cover(range);
+    let covered = source.cover(range);
+    // Recover the whole marked closer without gluing its independent neighbor.
+    if covered.start < range.start && source.text()[covered.start..].starts_with(')') {
+        let first_end = source.cover(SourceRange::new(range.start, range.start)).end;
+        if first_end < covered.end {
+            push_token(tokens, source, SourceRange::new(covered.start, first_end));
+            push_token(tokens, source, SourceRange::new(first_end, covered.end));
+            return;
+        }
+    }
+    push_token(tokens, source, covered);
+}
+
+fn push_token<'a>(tokens: &mut Vec<Token<'a>>, source: &'a SourceMap, range: SourceRange) {
     tokens.push(Token {
         range,
         text: &source.text()[range.start..range.end],
@@ -262,6 +288,22 @@ fn append_token<'a>(tokens: &mut Vec<Token<'a>>, source: &'a SourceMap, range: S
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn marked_closers_and_their_neighbors_have_disjoint_grapheme_tokens() {
+        let rules = Resources::load().unwrap();
+        let control = WorkControl::default();
+        for neighbor in ["AB12", "5kg", "Claude", "12"] {
+            let text = format!(")\u{301}{neighbor}");
+            let source = SourceMap::new(&text, &control).unwrap();
+            let scanned = tokens(&source, &rules, &control).unwrap();
+            assert_eq!(scanned.tokens.len(), 2);
+            assert_eq!(scanned.tokens[0].range, SourceRange::new(0, 3));
+            assert_eq!(scanned.tokens[0].text, ")\u{301}");
+            assert_eq!(scanned.tokens[1].range, SourceRange::new(3, text.len()));
+            assert_eq!(scanned.tokens[1].text, neighbor);
+        }
+    }
 
     #[test]
     fn indexed_phone_groups_match_local_traversal_and_prefix_digit_counts() {
@@ -283,9 +325,7 @@ mod tests {
                 let mut end = index;
                 while let Some(next) = tokens.get(end + 1) {
                     if !signals::telephone_group(next.text)
-                        || !text[tokens[end].range.end..next.range.start]
-                            .chars()
-                            .all(|ch| ch.is_whitespace() || matches!(ch, '(' | ')' | '-'))
+                        || !telephone_gap(&text[tokens[end].range.end..next.range.start])
                     {
                         break;
                     }

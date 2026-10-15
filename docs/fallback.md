@@ -57,6 +57,20 @@ parts. Account/identifier digits are spelled, including zeros, without checksum
 certification. Existing decimal, money, telephone and electronic readings do
 not change when they already succeed.
 
+Unsupported telephone tails belong to one failed owner, including malformed
+widths/incomplete runs, empty/repeated tails and invalid separators once source
+membership is established. For `0532 123 45 67'den`, Fallback spells the whole
+source as `sıfır beş üç iki bir iki üç dört beş altı yedi kesme de e ne`, with one
+Identifier / InvalidForm / InvalidExpression / Literal diagnostic over `[0,18)`.
+The trailing group is not a successful Cardinal, and this does not add telephone
+suffix pronunciation. Preserve keeps the whole source with one issue; Reject
+reports that same range without a result. Whole-owner hint checks and genuine
+cancellation/resource errors still apply before policy completion.
+Owned phone parentheses and mixed hyphen groups are rendered in the same
+fallback record. A non-composing mark in the attached tail may require the
+existing UnicodeCodePoint strategy, still with one complete original-source
+owner rather than a second numeric fallback.
+
 Primary coverage is shared by all three policies. Valid compact quantities,
 space-grouped money and supported units receive primary readings under Fallback
 without fallback records. See the [normalization reference](normalization.md).

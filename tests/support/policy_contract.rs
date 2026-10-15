@@ -136,6 +136,10 @@ const GROUPS: &[(&str, &str)] = &[
         "policy-contract/standalone-letters.json",
         include_str!("../fixtures/policy-contract/standalone-letters.json"),
     ),
+    (
+        "policy-contract/telephone-ownership.json",
+        include_str!("../fixtures/policy-contract/telephone-ownership.json"),
+    ),
 ];
 
 pub fn load() -> (Vec<Value>, usize) {

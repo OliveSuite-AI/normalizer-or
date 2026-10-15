@@ -7,7 +7,7 @@ mod pronunciation;
 mod quantities;
 
 use super::{
-    boundaries::{Boundaries, quantity_tail},
+    boundaries::{Boundaries, Claim, quantity_tail},
     context,
     scan::{self, Token, whitespace_between},
     temporal,
@@ -89,12 +89,12 @@ pub(super) fn read(
     index: usize,
     bounds: &Boundaries<'_>,
     control: &WorkControl,
-) -> Result<Option<(super::Reading, usize)>, NormalizeError> {
+) -> Result<Option<(super::Reading, Claim)>, NormalizeError> {
     let reading = existing(ctx, index, bounds, control)?;
     let eligible = match &reading {
         None => true,
-        Some((super::Reading::Unresolved(finding), end)) => {
-            *end == index
+        Some((super::Reading::Unresolved(finding), claim)) => {
+            claim.next == index + 1
                 && finding.class() == FallbackClass::Roman
                 && finding.category() == Some(IssueCategory::Ambiguous)
                 && finding.reason() == crate::FallbackReason::MissingIntent
@@ -105,9 +105,13 @@ pub(super) fn read(
         && ctx.tokens[index].standalone
         && let Some(letter) = numbers::LetterName::parse(ctx.tokens[index].text)
     {
+        let claim = match reading {
+            Some((_, claim)) => claim,
+            None => bounds.claim(index, index)?,
+        };
         return Ok(Some((
             super::Reading::Resolved(Value::Letter(letter)),
-            index,
+            claim,
         )));
     }
     Ok(reading)
@@ -118,20 +122,23 @@ fn existing(
     index: usize,
     bounds: &Boundaries<'_>,
     control: &WorkControl,
-) -> Result<Option<(super::Reading, usize)>, NormalizeError> {
+) -> Result<Option<(super::Reading, Claim)>, NormalizeError> {
+    let claim = |(reading, end): (super::Reading, usize)| {
+        bounds.claim(index, end).map(|claim| (reading, claim))
+    };
     if let Some(attempt) = products::read(ctx, index, control)? {
-        return Ok(Some(attempt));
+        return claim(attempt).map(Some);
     }
+    let interpret = |reading: Result<Value, IssueCategory>, source: &str, class| match reading {
+        Ok(value) => super::Reading::Resolved(value),
+        Err(category) => {
+            super::Reading::Unresolved(UnresolvedFinding::unresolved(source, class, category))
+        }
+    };
     let annotate = |attempt: Attempt, class| {
         let (reading, end) = attempt;
         let source = &ctx.text[ctx.tokens[index].range.start..ctx.tokens[end].range.end];
-        let reading = match reading {
-            Ok(value) => super::Reading::Resolved(value),
-            Err(category) => {
-                super::Reading::Unresolved(UnresolvedFinding::unresolved(source, class, category))
-            }
-        };
-        (reading, end)
+        (interpret(reading, source, class), end)
     };
     let admit_catalog = |attempt: Attempt| {
         let (value, end) = &attempt;
@@ -168,17 +175,23 @@ fn existing(
                 .map(|attempt| annotate(attempt, FallbackClass::Electronic))
         });
     if priority.is_some() {
-        return Ok(priority);
+        return priority.map(claim).transpose();
     }
     if let Some(range) = temporal::range(ctx.text, ctx.tokens, index) {
-        return Ok(Some(range));
+        return claim(range).map(Some);
     }
     let date_shaped = numbers::split_suffix(ctx.tokens[index].text)
         .is_some_and(|(base, _)| crate::domain::temporal::Date::parse(base).is_some());
-    if !date_shaped && let Some(attempt) = identifiers::read(ctx, index, control)? {
-        return Ok(Some(annotate(attempt, FallbackClass::Identifier)));
+    if !date_shaped && let Some(found) = identifiers::read(ctx, index, control)? {
+        let (reading, end) = found.attempt;
+        let claim = bounds.claim_through(index, end, found.source_end)?;
+        let source = &ctx.text[claim.range.start..claim.range.end];
+        return Ok(Some((
+            interpret(reading, source, FallbackClass::Identifier),
+            claim,
+        )));
     }
-    Ok(numeric::read(ctx, index)
+    numeric::read(ctx, index)
         .map(|(attempt, class)| annotate(attempt, class))
         .or_else(|| {
             quantities::read(ctx, index).map(|attempt| annotate(attempt, FallbackClass::Quantity))
@@ -206,7 +219,9 @@ fn existing(
             unsupported_quantity(ctx, index)
                 .map(|attempt| annotate(attempt, FallbackClass::Quantity))
         })
-        .or_else(|| token(ctx, index).map(|reading| (reading, index))))
+        .or_else(|| token(ctx, index).map(|reading| (reading, index)))
+        .map(claim)
+        .transpose()
 }
 
 fn unsupported_quantity(ctx: &Context<'_>, index: usize) -> Option<Attempt> {
