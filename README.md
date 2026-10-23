@@ -35,6 +35,12 @@ uv pip install "git+https://github.com/OliveSuite-AI/normalizer-or.git#subdirect
 See [Python publishing](docs/publishing.md) for the PyPI release checklist and
 the installation commands that become available after publication.
 
+Run all [Python examples](bindings/python/examples/README.md) after installation:
+
+```sh
+python bindings/python/examples/run_all.py
+```
+
 ```python
 from normalizer_or import Normalizer
 

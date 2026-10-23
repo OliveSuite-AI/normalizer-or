@@ -7,6 +7,15 @@ Use CPython 3.11–3.14. Source builds need the pinned Rust toolchain and maturi
 python -m pip install ./bindings/python
 ```
 
+Run the [complete example suite](examples/README.md) from the repository root:
+
+```sh
+python bindings/python/examples/run_all.py
+```
+
+The scripts include expected-output assertions and cover speech, cleanup,
+policies, hints, diagnostics, errors, controls, threading, and JSONL files.
+
 ```python
 from normalizer_or import Hint, Normalizer
 

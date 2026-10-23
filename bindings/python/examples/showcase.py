@@ -1,9 +1,65 @@
-"""Odia-only speech and written cleanup examples."""
+"""Supported speech formats, with explicit expected Odia output."""
 
-from normalizer_or import Normalizer
+from normalizer_or import BUILD_VERSION, NORMALIZER_ID, Normalizer
 
-n = Normalizer()
-for source in ["୨୫ kg", "₹1,23,456.50", "23/10/2026", "09:30", "English ଓଡ଼ିଆ 123"]:
-    result = n.normalize(source)
-    print(source, "→", result.normalized_text, "complete:", result.complete)
-print(n.clean("  123\n", digits="odia", whitespace="collapse").normalized_text)
+
+def main():
+    n = Normalizer()
+    cases = [
+        ("0", "ଶୂନ୍ୟ"),
+        ("୨୫", "ପଚିଶ"),
+        ("25", "ପଚିଶ"),
+        ("1୨3", "ଏକ ଶହ ତେଇଶ"),
+        ("100", "ଏକ ଶହ"),
+        ("1,000", "ଏକ ହଜାର"),
+        ("1,00,000", "ଏକ ଲକ୍ଷ"),
+        ("100,000", "ଏକ ଲକ୍ଷ"),
+        ("1,00,00,000", "ଏକ କୋଟି"),
+        ("1,23,456", "ଏକ ଲକ୍ଷ ତେଇଶ ହଜାର ଚାରି ଶହ ଛପନ"),
+        ("0005", "ଶୂନ୍ୟ ଶୂନ୍ୟ ଶୂନ୍ୟ ପାଞ୍ଚ"),
+        ("-0", "ବିଯୁକ୍ତ ଶୂନ୍ୟ"),
+        ("+୫", "ଯୁକ୍ତ ପାଞ୍ଚ"),
+        ("12.050", "ବାର ଦଶମିକ ଶୂନ୍ୟ ପାଞ୍ଚ ଶୂନ୍ୟ"),
+        ("୧୨.୫୦", "ବାର ଦଶମିକ ପାଞ୍ଚ ଶୂନ୍ୟ"),
+        ("₹25", "ପଚିଶ ଟଙ୍କା"),
+        ("୨୫ INR", "ପଚିଶ ଟଙ୍କା"),
+        ("INR 25.50", "ପଚିଶ ଟଙ୍କା ପଚାଶ ପଇସା"),
+        ("25₹", "ପଚିଶ ଟଙ୍କା"),
+        ("₹ 25.05", "ପଚିଶ ଟଙ୍କା ପାଞ୍ଚ ପଇସା"),
+        ("₹0.5", "ଶୂନ୍ୟ ଟଙ୍କା ପଚାଶ ପଇସା"),
+        ("₹25.00", "ପଚିଶ ଟଙ୍କା"),
+        ("₹-0.05", "ବିଯୁକ୍ତ ଶୂନ୍ୟ ଟଙ୍କା ପାଞ୍ଚ ପଇସା"),
+        ("12.5%", "ବାର ଦଶମିକ ପାଞ୍ଚ ପ୍ରତିଶତ"),
+        ("% ୫", "ପାଞ୍ଚ ପ୍ରତିଶତ"),
+        ("5kg", "ପାଞ୍ଚ କିଲୋଗ୍ରାମ"),
+        ("୫ kg", "ପାଞ୍ଚ କିଲୋଗ୍ରାମ"),
+        ("1.5 L", "ଏକ ଦଶମିକ ପାଞ୍ଚ ଲିଟର"),
+        ("25°C", "ପଚିଶ ଡିଗ୍ରୀ ସେଲସିୟସ"),
+        (
+            "1g;2mg;3km;4m;5cm;6mm;7mL",
+            "ଏକ ଗ୍ରାମ;ଦୁଇ ମିଲିଗ୍ରାମ;ତିନି କିଲୋମିଟର;ଚାରି ମିଟର;ପାଞ୍ଚ ସେଣ୍ଟିମିଟର;ଛଅ ମିଲିମିଟର;ସାତ ମିଲିଲିଟର",
+        ),
+        ("2026-10-23", "ତେଇଶ ଅକ୍ଟୋବର ଦୁଇ ହଜାର ଛବିଶ"),
+        ("୨୩/୧୦/୨୦୨୬", "ତେଇଶ ଅକ୍ଟୋବର ଦୁଇ ହଜାର ଛବିଶ"),
+        ("23-10-2026", "ତେଇଶ ଅକ୍ଟୋବର ଦୁଇ ହଜାର ଛବିଶ"),
+        ("29/02/2024", "ଅଣତିରିଶ ଫେବୃଆରୀ ଦୁଇ ହଜାର ଚବିଶ"),
+        ("09:30", "ନଅ ଘଣ୍ଟା ତିରିଶ ମିନିଟ"),
+        ("୦୦:୦୦", "ଶୂନ୍ୟ ଘଣ୍ଟା ଶୂନ୍ୟ ମିନିଟ"),
+        ("23:59", "ତେଇଶ ଘଣ୍ଟା ଅଣଷଠି ମିନିଟ"),
+        ("English ଓଡ଼ିଆ 5 kg।", "English ଓଡ଼ିଆ ପାଞ୍ଚ କିଲୋଗ୍ରାମ।"),
+        ("“୨୫”", "“ପଚିଶ”"),
+        ("1.", "ଏକ."),
+    ]
+    print(f"Build {BUILD_VERSION}; {NORMALIZER_ID}")
+    assert n.normalizer_id == NORMALIZER_ID
+    for source, expected in cases:
+        result = n.normalize(source)
+        assert result.normalized_text == expected, (source, result)
+        assert result.complete and not result.issues and not result.fallback_used
+        assert result.locale == "or-IN"
+        print(f"{source} → {result.normalized_text}")
+    print(f"PASS: {len(cases)} speech examples")
+
+
+if __name__ == "__main__":
+    main()
