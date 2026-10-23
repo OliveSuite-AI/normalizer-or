@@ -5,6 +5,8 @@ Number words 0–99 and hundred/thousand/lakh/crore composition, rupee/paise,
 unit names, time labels, and fallback readings are explicit alpha defaults.
 They have automated text goldens, not completed native-speaker or audio review.
 Do not claim production pronunciation quality from `complete=true` or passing tests.
+Elementary formula variable names and operator, power, and fraction readings are
+also project-authored alpha defaults; they need native-speaker and audio review.
 
 Gregorian month spellings were cross-checked against Unicode CLDR **release-48**:
 https://github.com/unicode-org/cldr/blob/release-48/common/main/or.xml

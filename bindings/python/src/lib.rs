@@ -143,6 +143,7 @@ fn segment_kind(kind: SegmentKind) -> &'static str {
         SegmentKind::Roman => "roman",
         SegmentKind::Electronic => "electronic",
         SegmentKind::Symbol => "symbol",
+        SegmentKind::Formula => "formula",
         SegmentKind::Fallback => "fallback",
     }
 }

@@ -317,6 +317,152 @@ fn malformed_owners_keep_neighbors_and_original_coordinates() {
 }
 
 #[test]
+fn latex_math_is_spoken_as_one_formula_segment() {
+    let n = Normalizer::new().unwrap();
+    let formula = r"\frac{1}{6}x^2 + \frac{5}{6}x + 1 = \left(\frac{1}{6}x^2 + \frac{5}{6}x\right) + \left(1\right)";
+    for block in [
+        format!("$$\n{formula}\n$$"),
+        format!("\\[{formula}\\]"),
+        format!("\\({formula}\\)"),
+        format!("${formula}$"),
+    ] {
+        let input = format!("Before {block} after 6");
+        let start = "Before ".len();
+        let end = start + block.len();
+        let result = n.normalize(&input, &Default::default()).unwrap();
+        check_partition(&input, &result);
+        assert_eq!(result.issues().len(), 0, "{block:?}");
+        assert!(result.complete());
+        assert_eq!(
+            result
+                .segments()
+                .iter()
+                .find(|s| s.kind() == SegmentKind::Formula)
+                .unwrap()
+                .range(),
+            SourceRange::new(start, end)
+        );
+        assert!(result.normalized_text().contains("ଯୁକ୍ତ"));
+        assert_eq!(
+            result.normalized_text().rsplit_once(" after ").unwrap().1,
+            "ଛଅ"
+        );
+
+        let fallback = n
+            .normalize(
+                &input,
+                &NormalizeOptions {
+                    ambiguity_policy: AmbiguityPolicy::Fallback,
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+        check_partition(&input, &fallback);
+        assert!(fallback.fallbacks().is_empty(), "{block:?}");
+        assert!(fallback.normalized_text().ends_with("after ଛଅ"));
+
+        assert!(
+            n.normalize(
+                &input,
+                &NormalizeOptions {
+                    ambiguity_policy: AmbiguityPolicy::Reject,
+                    ..Default::default()
+                }
+            )
+            .is_ok()
+        );
+    }
+
+    let superscript = "$x² + 5x + 6$";
+    let result = n.normalize(superscript, &Default::default()).unwrap();
+    assert!(result.complete());
+    assert_eq!(result.issues().len(), 0);
+    assert!(result.normalized_text().contains("ଘାତ"));
+}
+
+#[test]
+fn compact_plain_formula_is_recognized_but_ambiguous_token_is_not() {
+    let n = Normalizer::new().unwrap();
+    let result = n.normalize("x²+5x+6", &Default::default()).unwrap();
+    assert_eq!(
+        result.normalized_text(),
+        "ଏକ୍ସ ର ଘାତ ଦୁଇ ଯୁକ୍ତ ପାଞ୍ଚ ଗୁଣନ ଏକ୍ସ ଯୁକ୍ତ ଛଅ"
+    );
+    assert_eq!(result.segments()[0].kind(), SegmentKind::Formula);
+    let spaced = n.normalize("x² + 5x + 6", &Default::default()).unwrap();
+    assert!(spaced.normalized_text().contains("ଘାତ"));
+    assert_eq!(spaced.segments()[0].kind(), SegmentKind::Formula);
+    let fraction = n.normalize("1/6", &Default::default()).unwrap();
+    assert!(fraction.normalized_text().contains("ଲବ"));
+    let grouped = n.normalize("x*(x+5)=6", &Default::default()).unwrap();
+    assert!(grouped.normalized_text().contains("ସମାନ"));
+    assert!(grouped.normalized_text().contains("ବାମ ବନ୍ଧନୀ"));
+    let ambiguous = n.normalize("5x", &Default::default()).unwrap();
+    assert_eq!(ambiguous.normalized_text(), "5x");
+    assert!(ambiguous.issues().is_empty());
+}
+
+#[test]
+fn malformed_formula_remains_whole_and_unresolved() {
+    let n = Normalizer::new().unwrap();
+    let source = "$x^ + 2$";
+    let result = n.normalize(source, &Default::default()).unwrap();
+    assert_eq!(result.normalized_text(), source);
+    assert_eq!(result.issues().len(), 1);
+    assert_eq!(
+        result.issues()[0].range(),
+        SourceRange::new(0, source.len())
+    );
+}
+
+#[test]
+fn explicit_math_scalars_continuations_and_boxed_equations_are_spoken() {
+    let n = Normalizer::new().unwrap();
+    for (source, expected) in [
+        ("$5x$", "ପାଞ୍ଚ ଗୁଣନ ଏକ୍ସ"),
+        ("$6$", "ଛଅ"),
+        ("$$=x+1$$", "ସମାନ ଏକ୍ସ ଯୁକ୍ତ ଏକ"),
+        (r"$$\boxed{x^2 + 5x + 6 = 0}$$", "ସମାନ"),
+    ] {
+        let result = n.normalize(source, &Default::default()).unwrap();
+        assert!(result.complete(), "{source}");
+        assert!(result.normalized_text().contains(expected), "{source}");
+    }
+    let heading = n.normalize("ପଦକ୍ଷେପ 1: ଖୋଜନ୍ତୁ", &Default::default()).unwrap();
+    assert!(heading.complete());
+    assert!(heading.normalized_text().starts_with("ପଦକ୍ଷେପ ଏକ:"));
+}
+
+#[test]
+fn latex_text_labels_and_metric_units_are_spoken() {
+    let n = Normalizer::new().unwrap();
+    for (formula, expected) in [
+        (
+            r"$$\text{Area} = \text{length} \times \text{breadth}$$",
+            "କ୍ଷେତ୍ରଫଳ ସମାନ ଲମ୍ବ ଗୁଣନ ପ୍ରସ୍ଥ",
+        ),
+        (
+            r"$$\text{Area} = 8 \times 5 = 40 \text{ cm}^2$$",
+            "କ୍ଷେତ୍ରଫଳ ସମାନ ଆଠ ଗୁଣନ ପାଞ୍ଚ ସମାନ ଚାଳିଶ ବର୍ଗ ସେଣ୍ଟିମିଟର",
+        ),
+        (
+            r"$$\text{Perimeter} = 2 \times (8 + 5) = 2 \times 13 = 26 \text{ cm}$$",
+            "ପରିଧି ସମାନ ଦୁଇ ଗୁଣନ ବାମ ବନ୍ଧନୀ ଆଠ ଯୁକ୍ତ ପାଞ୍ଚ ଡାହାଣ ବନ୍ଧନୀ",
+        ),
+        (
+            r"$$\text{Area} = \text{length} \times \text{breadth}
+\text{Perimeter} = 2 \times (\text{length} + \text{breadth})$$",
+            "ପରିଧି ସମାନ",
+        ),
+    ] {
+        let result = n.normalize(formula, &Default::default()).unwrap();
+        assert!(result.complete(), "{formula}: {:?}", result.issues());
+        assert_eq!(result.issues().len(), 0);
+        assert!(result.normalized_text().contains(expected), "{formula}");
+    }
+}
+
+#[test]
 fn phone_protection_and_explicit_whole_digit_hints() {
     let n = Normalizer::new().unwrap();
     for (input, start) in [("+91 98765 43210", 0), ("phone: 9876543210", 7)] {

@@ -14,6 +14,7 @@ use crate::{
 };
 
 mod boundaries;
+mod formula;
 
 type Reading = Result<(SegmentKind, String, &'static str), IssueCategory>;
 
@@ -295,10 +296,48 @@ pub(crate) fn normalize(
     let mut cursor = 0;
     while index < atoms.len() {
         control.check()?;
-        let detected = boundaries::claim(text, &atoms, index);
+        let mut detected = boundaries::claim(text, &atoms, index);
         let mut range = detected.range;
         let mut next = detected.next;
         let hint = hints.get(hint_index);
+        if hint.is_none() && !detected.protected && !detected.invalid {
+            let mut best = formula::read(&text[range.start..range.end]);
+            if best.is_some() {
+                let mut end_index = index + 1;
+                while end_index < atoms.len() && end_index - index < 48 {
+                    let gap = &text[atoms[end_index - 1].range.end..atoms[end_index].range.start];
+                    if gap.contains(['\n', '\r', '!', '?', ';', '।', '॥']) {
+                        break;
+                    }
+                    let candidate_end = atoms[end_index].range.end;
+                    if let Some(reading) = formula::read(&text[range.start..candidate_end]) {
+                        best = Some(reading);
+                        range.end = candidate_end;
+                        next = end_index + 1;
+                    }
+                    end_index += 1;
+                }
+                if let Some(reading) = best {
+                    detected.range = range;
+                    detected.next = next;
+                    detected.invalid = false;
+                    let mapped = source
+                        .original(source.cover(range))
+                        .map_err(|_| NormalizeError::Internal)?;
+                    output.verbatim(input, cursor, mapped.start)?;
+                    output.emit(
+                        input,
+                        mapped,
+                        Ok(reading),
+                        options.ambiguity_policy,
+                        control,
+                    )?;
+                    cursor = mapped.end;
+                    index = next;
+                    continue;
+                }
+            }
+        }
         let reading = if let Some(hint) = hint.filter(|h| h.range.start == range.start) {
             if hint.range.end < range.end {
                 return Err(NormalizeError::InvalidHint);
@@ -326,9 +365,24 @@ pub(crate) fn normalize(
             if detected.protected {
                 Some(Ok(Err(IssueCategory::ProtectedIdentifier)))
             } else if detected.invalid {
-                Some(Ok(Err(IssueCategory::InvalidExpression)))
+                Some(Ok(formula::read(&text[range.start..range.end])
+                    .map(Ok)
+                    .unwrap_or(Err(IssueCategory::InvalidExpression))))
             } else {
-                read(&text[range.start..range.end], options.ambiguity_policy).map(Ok)
+                let candidate = &text[range.start..range.end];
+                let isolated_coefficient = candidate.len() >= 2
+                    && candidate.as_bytes()[..candidate.len() - 1]
+                        .iter()
+                        .all(u8::is_ascii_digit)
+                    && candidate.as_bytes()[candidate.len() - 1].is_ascii_alphabetic()
+                    && vocabulary::unit(&candidate[candidate.len() - 1..]).is_none();
+                if isolated_coefficient {
+                    None
+                } else {
+                    formula::read(candidate)
+                        .map(|value| Ok(Ok(value)))
+                        .or_else(|| read(candidate, options.ambiguity_policy).map(Ok))
+                }
             }
         };
         if let Some(reading) = reading {
@@ -404,6 +458,17 @@ fn read(text: &str, policy: AmbiguityPolicy) -> Option<Reading> {
     let s = ascii.as_str();
     let invalid = || Some(Err(IssueCategory::InvalidExpression));
     if has_digit(s) {
+        if let Some(number) = s
+            .strip_suffix(':')
+            .and_then(|body| Number::parse(body, true))
+            && number.fraction.is_empty()
+        {
+            return Some(Ok((
+                SegmentKind::Cardinal,
+                format!("{}:", number.render(false)),
+                "number",
+            )));
+        }
         // Calendar/clock recognition owns invalid values as well as valid values.
         if s.split(['/', '-']).count() == 3 && !s.starts_with(['+', '-']) {
             return Some(

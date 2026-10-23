@@ -42,9 +42,11 @@ Runs offline with **no speech model, API key, network service, or runtime Python
 - **Everyday notation:** INR/paise, percentages, ten unit labels, Gregorian dates and 24-hour clocks.
 - **Inspectable results:** completeness, source segments, issues and fallback assumptions with original UTF-8 byte offsets.
 - **Bounded execution:** input/output limits, cooperative cancellation and deadlines; reuse one normalizer across threads.
+- **Markdown and formula speech:** Python's `strip_markdown()` removes common formatting and preserves math spans; elementary algebra formulas receive Odia symbolic readings.
 
 English prose and names stay as written. URLs, email addresses and opaque identifiers
-are protected from partial numeric expansion. Coverage and spellings are **alpha
+are protected from partial numeric expansion. Supported elementary algebra is
+spoken; unsupported formulas stay intact as unresolved expressions. Coverage and spellings are **alpha
 defaults** pending native-speaker/audio review; passing tests do not establish speech quality.
 
 ## Quick start

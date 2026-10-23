@@ -70,6 +70,25 @@ are collected, a following independent quantity remains separate. Explicit
 quantity labels take precedence over a generic cue (`phone: 5 kg` stays a unit).
 Ordinary uncued integers retain cardinal behavior.
 
+Elementary algebra formulas are parsed and spoken by default. Paired LaTeX
+display delimiters (`$$…$$`, `\[…\]`) and inline delimiters (`\(…\)`, plus
+`$…$` when the body contains math syntax) own one formula segment. Supported
+forms include integers, single Latin variables, grouping, implicit or explicit
+multiplication, division, powers, and equations using `+`, `-`, `*`, `/`, `×`,
+`÷`, `^`, `²`, `³`, or `=`. Basic `\frac{…}{…}`, `\cdot`, `\times`, `\div`,
+`\left`, `\right`, `\boxed{…}`, and recognized `\text{…}` labels and metric
+units (Area, Perimeter, length, breadth, m, cm, mm, km) are accepted. Repeated
+equalities and separate equations on display-math lines are read in sequence.
+Explicitly delimited scalar formulas and continuation lines beginning with `=`
+are spoken. Compact or spaced undelimited algebra such as `x² + 5x + 6` is
+recognized; an isolated undelimited form such as `5x` remains prose. Formulas are
+read symbolically with Odia variable names, operator readings, spoken grouping,
+`ଘାତ` for powers, and `ଲବ`/`ହର` for fractions. The parser does not simplify or
+solve expressions.
+Unsupported or malformed formulas remain one unresolved expression, so
+Preserve, Reject, and Fallback retain their existing meanings. Unmatched math
+delimiters are not treated as formula blocks.
+
 Electronic source protection recognizes HTTP/HTTPS, `www`, and email-shaped
 source before splitting punctuation in paths/queries. Bare domains require ASCII
 labels of 1–63 letters/digits/hyphens, without leading/trailing hyphens, and one
