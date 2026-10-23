@@ -12,6 +12,7 @@ pub(super) struct Atom {
     pub(super) range: SourceRange,
     electronic: bool,
     wrapper_error: bool,
+    math_expression: bool,
     numeric_end: usize,
 }
 
@@ -92,8 +93,28 @@ fn numeric(s: &str) -> bool {
 pub(super) fn scan(text: &str, control: &WorkControl) -> Result<Vec<Atom>, NormalizeError> {
     let gs: Vec<_> = text.grapheme_indices(true).collect();
     let mut protected = vec![false; gs.len()];
-    // Electronic source owns punctuation in its paths/queries before prose splitting.
+    // Treat paired LaTeX math delimiters as one source owner. Mark boundaries
+    // separately from electronic protection: math must be reported as an
+    // invalid expression, rather than as an identifier.
+    let mut math = vec![false; gs.len()];
+    let mut math_starts = vec![false; gs.len()];
+    let mut math_ends = vec![false; gs.len()];
     let mut i = 0;
+    while i < gs.len() {
+        control.check()?;
+        if let Some(end) = math_block_end(text, &gs, i) {
+            math[i..end].fill(true);
+            math_starts[i] = true;
+            if end < gs.len() {
+                math_ends[end] = true;
+            }
+            i = end;
+        } else {
+            i += 1;
+        }
+    }
+    // Electronic source owns punctuation in its paths/queries before prose splitting.
+    i = 0;
     while i < gs.len() {
         control.check()?;
         if whitespace(gs[i].1) {
@@ -116,7 +137,7 @@ pub(super) fn scan(text: &str, control: &WorkControl) -> Result<Vec<Atom>, Norma
     let mut stack: Vec<(usize, &str)> = Vec::new();
     for (i, (_, g)) in gs.iter().enumerate() {
         control.check()?;
-        if protected[i] {
+        if protected[i] || math[i] {
             continue;
         }
         if let Some(&(open, close)) = stack.last()
@@ -138,8 +159,14 @@ pub(super) fn scan(text: &str, control: &WorkControl) -> Result<Vec<Atom>, Norma
     let mut opaque_comma = false;
     for (i, &(offset, g)) in gs.iter().enumerate() {
         control.check()?;
-        let mut boundary = whitespace(g) || transparent[i];
-        if !protected[i] {
+        if math_starts[i]
+            && let Some(begin) = start.take()
+        {
+            push(text, begin, offset, &mut result);
+            opaque_comma = false;
+        }
+        let mut boundary = math_ends[i] || (!math[i] && (whitespace(g) || transparent[i]));
+        if !protected[i] && !math[i] {
             boundary |= matches!(g, ";" | "।" | "॥" | "!" | "?");
             if g == "," {
                 let prev = if i > 0 { gs[i - 1].1 } else { "" };
@@ -223,9 +250,96 @@ fn push(text: &str, start: usize, mut end: usize, out: &mut Vec<Atom>) {
             range: SourceRange::new(start, end),
             electronic: electronic(core),
             wrapper_error: body.graphemes(true).any(wrapper),
+            math_expression: is_math_block(body),
             numeric_end: 0,
         });
     }
+}
+
+fn is_math_block(s: &str) -> bool {
+    (s.starts_with("$$") && s.ends_with("$$") && s.len() > 4)
+        || (s.starts_with("\\(") && s.ends_with("\\)") && s.len() > 4)
+        || (s.starts_with("\\[") && s.ends_with("\\]") && s.len() > 4)
+        || (s.starts_with('$')
+            && s.ends_with('$')
+            && s.len() > 2
+            && math_syntax(&s[1..s.len() - 1]))
+}
+
+fn math_syntax(body: &str) -> bool {
+    body.contains('=')
+        || body.contains('^')
+        || body.contains('_')
+        || body.contains('²')
+        || body.contains('³')
+        || body.contains('+')
+        || body.contains('-')
+        || body.contains('*')
+        || body.contains('/')
+        || body.contains("\\frac")
+        || body.contains("\\sqrt")
+        || body.contains("\\left")
+        || body.contains("\\right")
+        || (body.chars().any(|c| c.is_ascii_alphabetic())
+            && body
+                .chars()
+                .any(|c| c.is_ascii_digit() || matches!(c, '²' | '³')))
+        || (!body.is_empty()
+            && body
+                .chars()
+                .all(|c| c.is_ascii_digit() || c.is_whitespace()))
+}
+
+fn math_block_end(text: &str, gs: &[(usize, &str)], start: usize) -> Option<usize> {
+    let offset = gs[start].0;
+    let rest = &text[offset..];
+    let (open, close) = if rest.starts_with("$$") {
+        ("$$", "$$")
+    } else if rest.starts_with("\\(") {
+        ("\\(", "\\)")
+    } else if rest.starts_with("\\[") {
+        ("\\[", "\\]")
+    } else if rest.starts_with('$') && !rest.starts_with("$$") {
+        ("$", "$")
+    } else {
+        return None;
+    };
+    // Odd preceding backslash runs escape delimiters, including `\(` and `\[`.
+    let slashes = text[..offset]
+        .chars()
+        .rev()
+        .take_while(|c| *c == '\\')
+        .count();
+    if slashes % 2 == 1 {
+        return None;
+    }
+    let body_start = offset + open.len();
+    let close_at = find_unescaped_close(text, body_start, close)?;
+    if close == "$" {
+        let slashes = text[..close_at]
+            .chars()
+            .rev()
+            .take_while(|c| *c == '\\')
+            .count();
+        if slashes % 2 == 1 || !math_syntax(&text[body_start..close_at]) {
+            return None;
+        }
+    }
+    let end_byte = close_at + close.len();
+    Some(gs.partition_point(|(byte, _)| *byte < end_byte))
+}
+
+fn find_unescaped_close(text: &str, start: usize, close: &str) -> Option<usize> {
+    let mut search_from = start;
+    while let Some(relative) = text[search_from..].find(close) {
+        let at = search_from + relative;
+        let preceding_slashes = text[..at].chars().rev().take_while(|c| *c == '\\').count();
+        if preceding_slashes % 2 == 0 {
+            return Some(at);
+        }
+        search_from = at + close.len();
+    }
+    None
 }
 
 fn piece<'a>(text: &'a str, atoms: &[Atom], i: usize) -> &'a str {
@@ -294,6 +408,10 @@ pub(super) fn claim(text: &str, atoms: &[Atom], i: usize) -> Claim {
         invalid: false,
     };
     if first.electronic {
+        return claim;
+    }
+    if first.math_expression {
+        claim.invalid = true;
         return claim;
     }
     if let Some(next) = phone_end(text, atoms, i) {

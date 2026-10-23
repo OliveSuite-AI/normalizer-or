@@ -30,6 +30,31 @@ r = n.normalize("୦୧୨", hints=[Hint(0, len("୦୧୨".encode("utf-8")), "c
 assert r.normalized_text == "ବାର"
 ```
 
+### Markdown input
+
+Use `strip_markdown` when the source contains common Markdown headings, lists,
+emphasis, inline code, or links. It removes those formatting markers while
+preserving their text and copying paired LaTeX spans unchanged. Bold spans that
+look like algebra are wrapped in inline dollar delimiters to keep their terms
+together. The normalizer speaks supported elementary algebra formulas in Odia;
+unsupported formula syntax remains intact as an unresolved expression.
+
+```python
+from normalizer_or import Normalizer, strip_markdown
+
+markdown = "# ଉତ୍ତର\n\n**ଫଳାଫଳ**: $x^2 + 5x + 6 = 0$"
+prepared = strip_markdown(markdown)
+result = Normalizer().normalize(prepared)
+
+assert prepared == "ଉତ୍ତର\n\nଫଳାଫଳ: $x^2 + 5x + 6 = 0$"
+assert result.complete
+assert "ଘାତ" in result.normalized_text
+```
+
+`strip_markdown` handles common Markdown patterns; it is not a complete
+CommonMark renderer. Diagnostic and segment byte offsets refer to the stripped
+text passed to `normalize`, not the original Markdown source.
+
 `normalize(text, *, ambiguity_policy="preserve", hints=(), cancellation=None,
 deadline_ms=None)` returns an immutable `NormalizeResult`. Supported policies:
 `preserve`, `reject`, `fallback`. Hint kinds: `cardinal`, `digits`, `date`, `time`.

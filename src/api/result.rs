@@ -44,6 +44,8 @@ pub enum SegmentKind {
     /// Approved prose symbol, standalone uppercase letter name, multiplication operator,
     /// or contextual separator. A primary kind, not a fallback diagnostic.
     Symbol,
+    /// Parsed elementary algebra formula spoken in Odia.
+    Formula,
     /// Source-faithful fallback, not certification of the source value.
     Fallback,
     /// Approved foreign-name spoken alias with validated inflection.

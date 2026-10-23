@@ -10,6 +10,7 @@ from ._native import (
     NativeNormalizationError,
     NativeNormalizer,
 )
+from .markdown import strip_markdown
 
 __all__ = [
     "Normalizer",
@@ -22,6 +23,7 @@ __all__ = [
     "CancellationToken",
     "NORMALIZER_ID",
     "BUILD_VERSION",
+    "strip_markdown",
 ]
 
 HintKind = Literal[

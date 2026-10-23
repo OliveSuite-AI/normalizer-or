@@ -11,6 +11,7 @@ from normalizer_or import (
     Hint,
     NormalizationError,
     Normalizer,
+    strip_markdown,
 )
 from scripts.contracts import check_fixture_case, run_request
 
@@ -84,6 +85,135 @@ def test_hints_and_original_coordinates():
         with pytest.raises(NormalizationError) as caught:
             Normalizer().normalize(source, hints=[hint])
         assert caught.value.code == "invalid_hint"
+
+
+@pytest.mark.parametrize(
+    "block",
+    [
+        "$$\n\\frac{1}{6}x^2 + \\frac{5}{6}x + 1 = \\left(\\frac{1}{6}x^2 + \\frac{5}{6}x\\right) + \\left(1\\right)\n$$",
+        r"\[\frac{1}{6}x^2 + \frac{5}{6}x + 1 = \left(\frac{1}{6}x^2 + \frac{5}{6}x\right) + \left(1\right)\]",
+        r"\(\frac{1}{6}x^2 + \frac{5}{6}x + 1 = \left(\frac{1}{6}x^2 + \frac{5}{6}x\right) + \left(1\right)\)",
+        r"$\frac{1}{6}x^2 + \frac{5}{6}x + 1 = \left(\frac{1}{6}x^2 + \frac{5}{6}x\right) + \left(1\right)$",
+    ],
+)
+def test_latex_math_is_spoken_as_a_whole_formula_segment(block):
+    text = f"Before {block} after 6"
+    start = len("Before ".encode())
+    end = start + len(block.encode())
+    normalizer = Normalizer()
+
+    result = normalizer.normalize(text)
+    partition(text, result)
+    assert result.complete
+    assert len(result.issues) == 0
+    formula = next(s for s in result.segments if s.kind == "formula")
+    assert (formula.start_byte, formula.end_byte) == (start, end)
+    assert "ଯୁକ୍ତ" in result.normalized_text
+    assert result.normalized_text.endswith("after ଛଅ")
+
+    fallback = normalizer.normalize(text, ambiguity_policy="fallback")
+    assert len(fallback.fallbacks) == 0
+    assert fallback.normalized_text.endswith("after ଛଅ")
+
+    assert normalizer.normalize(text, ambiguity_policy="reject").complete
+
+
+def test_plain_formula_and_ambiguous_coefficient():
+    normalizer = Normalizer()
+    result = normalizer.normalize("x²+5x+6")
+    assert result.segments[0].kind == "formula"
+    assert "ଘାତ" in result.normalized_text
+    assert normalizer.normalize("5x").normalized_text == "5x"
+
+
+def test_explicit_scalar_and_continuation_math():
+    normalizer = Normalizer()
+    expected = {
+        "$5x$": "ପାଞ୍ଚ ଗୁଣନ ଏକ୍ସ",
+        "$6$": "ଛଅ",
+        "$$=x+1$$": "ସମାନ ଏକ୍ସ ଯୁକ୍ତ ଏକ",
+        r"$$\boxed{x^2 + 5x + 6 = 0}$$": "ସମାନ",
+    }
+    for source, phrase in expected.items():
+        result = normalizer.normalize(source)
+        assert result.complete
+        assert phrase in result.normalized_text
+    heading = normalizer.normalize("ପଦକ୍ଷେପ 1: ଖୋଜନ୍ତୁ")
+    assert heading.complete
+    assert heading.normalized_text.startswith("ପଦକ୍ଷେପ ଏକ:")
+
+
+def test_rectangle_area_and_perimeter_paragraph_end_to_end():
+    source = r"""ଏକ ଆୟତକ୍ଷେତ୍ରର କ୍ଷେତ୍ରଫଳ ଓ ପରିଧି ସୂତ୍ରରୁ ହିସାବ କରାଯାଏ।
+
+**କ୍ଷେତ୍ରଫଳ:**
+$$
+\text{Area} = \text{length} \times \text{breadth}
+$$
+ଦିଆଯାଇଛି:
+- ଲମ୍ବ = 8 ସେମି
+- ପ୍ରସ୍ଥ = 5 ସେମି
+
+ତେଣୁ,
+$$
+\text{Area} = 8 \times 5 = 40 \text{ cm}^2
+$$
+
+**ପରିଧି:**
+$$
+\text{Perimeter} = 2 \times (\text{length} + \text{breadth})
+$$
+$$
+\text{Perimeter} = 2 \times (8 + 5) = 2 \times 13 = 26 \text{ cm}
+$$
+
+✅ ସୂତ୍ରଗୁଡ଼ିକ:
+$$
+\text{Area} = \text{length} \times \text{breadth}
+\text{Perimeter} = 2 \times (\text{length} + \text{breadth})
+$$"""
+    prepared = strip_markdown(source)
+    result = Normalizer().normalize(prepared)
+    assert result.complete
+    assert not result.issues
+    assert result.normalized_text.count("କ୍ଷେତ୍ରଫଳ ସମାନ") == 3
+    assert result.normalized_text.count("ପରିଧି ସମାନ") == 3
+    assert "ଚାଳିଶ ବର୍ଗ ସେଣ୍ଟିମିଟର" in result.normalized_text
+    assert "ଛବିଶ ସେଣ୍ଟିମିଟର" in result.normalized_text
+
+
+@pytest.mark.parametrize(
+    "formula",
+    [
+        "$x^2 + 5x + 6 = 0$",
+        "$$\nx^2 + 5x + 6 = 0\n$$",
+        r"\(x^2 + 5x + 6 = 0\)",
+        r"\[x^2 + 5x + 6 = 0\]",
+    ],
+)
+def test_strip_markdown_preserves_latex_before_normalization(formula):
+    source = f"# ଉତ୍ତର\n\n**6** **ସଠିକ୍ ପ୍ରକ୍ରିୟା**: {formula}\n- `୬`"
+    prepared = strip_markdown(source)
+    assert prepared == f"ଉତ୍ତର\n\n6 ସଠିକ୍ ପ୍ରକ୍ରିୟା: {formula}\n୬"
+
+    result = Normalizer().normalize(prepared)
+    assert result.normalized_text.startswith("ଉତ୍ତର\n\nଛଅ ସଠିକ୍ ପ୍ରକ୍ରିୟା: ")
+    assert result.normalized_text.endswith("\nଛଅ")
+    assert "ଘାତ" in result.normalized_text
+    assert result.complete
+    assert any(s.kind == "formula" for s in result.segments)
+
+
+def test_strip_markdown_protects_bold_algebra_but_normalizes_bold_numbers():
+    source = "**x² + 5x + 6** and **6**"
+    prepared = strip_markdown(source)
+    assert prepared == "$x² + 5x + 6$ and 6"
+
+    result = Normalizer().normalize(prepared)
+    assert "ଘାତ" in result.normalized_text
+    assert "and ଛଅ" in result.normalized_text
+    assert result.complete
+    assert any(s.kind == "formula" for s in result.segments)
 
 
 @pytest.mark.parametrize("operation", ["normalize", "clean"])
