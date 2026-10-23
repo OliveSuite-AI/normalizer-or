@@ -1,5 +1,7 @@
 # normalizer-or
 
+**Author:** Sambit Sekhar
+
 Offline Odia text normalization with a Rust core and a typed Python API.
 Licensed under Apache-2.0. It needs no speech model, network service, or Python runtime dependencies.
 
