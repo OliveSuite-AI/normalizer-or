@@ -5,6 +5,8 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+env:
+  RUSTUP_TOOLCHAIN: '1.99.0'
 jobs:
   deep:
     runs-on: ubuntu-24.04

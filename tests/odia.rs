@@ -33,7 +33,7 @@ fn check_partition(input: &str, result: &NormalizeResult) {
     );
     assert_eq!(result.complete(), result.issues().is_empty());
     assert_eq!(result.locale(), "or-IN");
-    assert_eq!(result.normalizer_id(), "normalizer-or/0.1.0");
+    assert_eq!(result.normalizer_id(), normalizer_or::NORMALIZER_ID);
 }
 
 #[test]

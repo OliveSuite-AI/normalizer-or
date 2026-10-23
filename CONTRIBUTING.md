@@ -36,12 +36,12 @@ linguistic correctness; native-speaker/audio review is still a release gate.
 No unsafe code, floating-point money, network runtime, global case folding,
 English transliteration, or inference from already-emitted speech.
 
-The package is not published. CI builds/tests only; manual release automation
-produces wheel/source artifacts without registry publication. A production
-release needs linguistic sign-off, exact-version checks, supported-platform
-wheel tests, provenance/license assets, and the new package's registry ownership.
-See [Python publishing](docs/publishing.md) for registry setup, wheel portability,
-and pip/uv installation.
+Merged PRs to `main` publish through the release workflow after CI succeeds.
+The workflow applies an automatically allocated patch version to its build
+checkout, tests the complete wheel matrix and sdist, and uses PyPI Trusted
+Publishing. See [Python releases](docs/publishing.md) for one-time account setup,
+manual build/TestPyPI runs, versioning, and recovery. Production speech quality
+still needs linguistic sign-off; automated releases retain the alpha status.
 
 ## Robustness and conformance
 

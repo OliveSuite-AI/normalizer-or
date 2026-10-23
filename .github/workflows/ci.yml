@@ -7,6 +7,7 @@ on:
 permissions:
   contents: read
 env:
+  RUSTUP_TOOLCHAIN: '1.99.0'
   PROPTEST_CASES: "512"
   PROPTEST_RNG_SEED: "1729"
 jobs:
@@ -41,6 +42,8 @@ jobs:
 
   msrv:
     runs-on: ubuntu-24.04
+    env:
+      RUSTUP_TOOLCHAIN: '1.94.0'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:

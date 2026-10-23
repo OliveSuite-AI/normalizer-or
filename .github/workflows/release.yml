@@ -1,14 +1,145 @@
-name: Build Odia release artifacts
+name: Publish Python package
 on:
+  workflow_run:
+    workflows: ['Odia CI']
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
+    inputs:
+      destination:
+        description: 'Build only, rehearse on TestPyPI, or publish to PyPI'
+        required: true
+        default: build
+        type: choice
+        options: [build, testpypi, pypi]
 permissions:
   contents: read
+# Version selection and upload share this lock. Never interrupt an active upload.
+concurrency:
+  group: normalizer-or-release
+  cancel-in-progress: false
+env:
+  RUSTUP_TOOLCHAIN: '1.99.0'
+  PROPTEST_CASES: '512'
+  PROPTEST_RNG_SEED: '1729'
 jobs:
-  build:
+  prepare:
+    permissions:
+      contents: read
+      pull-requests: read
+    if: >-
+      github.repository == 'OliveSuite-AI/normalizer-or' &&
+      ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+       (github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_repository.full_name == github.repository))
+    runs-on: ubuntu-24.04
+    outputs:
+      release: ${{ steps.gate.outputs.release }}
+      sha: ${{ steps.gate.outputs.sha }}
+      destination: ${{ steps.gate.outputs.destination }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          persist-credentials: false
+      - name: Require a merged PR or an explicit manual run
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          DESTINATION: ${{ inputs.destination || 'pypi' }}
+        shell: bash
+        run: |
+          release=true
+          if [ "$GITHUB_EVENT_NAME" = workflow_run ]; then
+            release=$(gh api "repos/$GITHUB_REPOSITORY/commits/$SOURCE_SHA/pulls" --jq '[.[] | select(.merged_at != null and .base.ref == "main" and .merge_commit_sha == env.SOURCE_SHA)] | length > 0')
+          fi
+          latest=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
+          if [ "$SOURCE_SHA" != "$latest" ]; then
+            release=false
+          fi
+          echo "release=$release" >> "$GITHUB_OUTPUT"
+          echo "sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "destination=$DESTINATION" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        if: steps.gate.outputs.release == 'true'
+        with:
+          python-version: '3.13'
+      - name: Allocate the next unused patch version
+        if: steps.gate.outputs.release == 'true'
+        id: version
+        env:
+          REGISTRY: ${{ steps.gate.outputs.destination == 'testpypi' && 'testpypi' || 'pypi' }}
+        run: python scripts/release.py select --registry "$REGISTRY"
+
+  wheels:
+    needs: prepare
+    if: needs.prepare.outputs.release == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11', '3.12', '3.13', '3.14']
+        platform:
+          - {os: ubuntu-24.04, arch: x64, name: linux-x64}
+          - {os: windows-latest, arch: x64, name: windows-x64}
+          - {os: macos-14, arch: arm64, name: macos-arm64}
+          - {os: macos-15-intel, arch: x64, name: macos-x64}
+    runs-on: ${{ matrix.platform.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: ${{ matrix.python }}
+          architecture: ${{ matrix.platform.arch }}
+      - uses: dtolnay/rust-toolchain@89b12181fb390509a0842a86cc55eeb8eb928c1d
+        with:
+          toolchain: '1.99.0'
+      - run: python -m pip install -c bindings/python/requirements-dev.txt maturin pytest twine
+      - name: Install portable Linux linker
+        if: runner.os == 'Linux'
+        run: python -m pip install 'maturin[zig]==1.15.0'
+      - name: Apply release version to all manifests and lockfile
+        env:
+          RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+        run: python scripts/release.py prepare "$RELEASE_VERSION"
+      - name: Build portable wheel
+        shell: python
+        run: |
+          import subprocess, sys
+          command = [sys.executable, '-m', 'maturin', 'build', '--locked', '--release', '--manifest-path', 'bindings/python/Cargo.toml', '--interpreter', sys.executable, '--out', 'dist']
+          if sys.platform == 'linux':
+              command += ['--zig', '--compatibility', 'manylinux_2_17']
+          subprocess.run(command, check=True)
+      - name: Install and test the exact wheel
+        shell: python
+        run: |
+          import pathlib, subprocess, sys
+          wheel, = pathlib.Path('dist').glob('*.whl')
+          subprocess.run([sys.executable, '-m', 'pip', 'install', '--no-deps', str(wheel)], check=True)
+          subprocess.run([sys.executable, '-m', 'pytest', 'bindings/python/tests', '-q'], check=True)
+          subprocess.run([sys.executable, '-m', 'twine', 'check', '--strict', str(wheel)], check=True)
+      - run: cargo build --locked --features serde --example contract-probe
+      - run: python -m scripts.robustness --seed 1729
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: release-wheel-${{ matrix.platform.name }}-${{ matrix.python }}
+          path: dist/*.whl
+          if-no-files-found: error
+
+  sdist:
+    needs: prepare
+    if: needs.prepare.outputs.release == 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
+          ref: ${{ needs.prepare.outputs.sha }}
           persist-credentials: false
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
@@ -16,21 +147,78 @@ jobs:
       - uses: dtolnay/rust-toolchain@89b12181fb390509a0842a86cc55eeb8eb928c1d
         with:
           toolchain: '1.99.0'
-      - run: python -m pip install -c bindings/python/requirements-dev.txt maturin pytest
-      - run: cargo test --locked --all-features
-      - run: python -m maturin build --locked --release --sdist --manifest-path bindings/python/Cargo.toml --interpreter python --out target/release-artifacts
-      - name: Test exact wheel
+      - run: python -m pip install -c bindings/python/requirements-dev.txt maturin pytest twine
+      - name: Apply release version
+        env:
+          RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+        run: python scripts/release.py prepare "$RELEASE_VERSION"
+      # --sdist builds a wheel from the source archive, proving it is complete.
+      - run: python -m maturin build --locked --release --sdist --manifest-path bindings/python/Cargo.toml --interpreter python --out dist
+      - name: Test source-built wheel and Rust core
         shell: python
         run: |
           import pathlib, subprocess, sys
-          wheel, = pathlib.Path('target/release-artifacts').glob('*.whl')
+          wheel, = pathlib.Path('dist').glob('*.whl')
+          sdist, = pathlib.Path('dist').glob('*.tar.gz')
           subprocess.run([sys.executable, '-m', 'pip', 'install', '--no-deps', str(wheel)], check=True)
           subprocess.run([sys.executable, '-m', 'pytest', 'bindings/python/tests', '-q'], check=True)
-      - run: cargo package --locked -p normalizer-or
-      - name: Upload build artifacts (no registry publication)
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+          subprocess.run([sys.executable, '-m', 'twine', 'check', '--strict', str(sdist)], check=True)
+          subprocess.run(['cargo', 'test', '--locked', '--all-features'], check=True)
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
-          name: normalizer-or-artifacts
-          path: |
-            target/release-artifacts/*
-            target/package/normalizer-or-*.crate
+          name: release-sdist
+          path: dist/*.tar.gz
+          if-no-files-found: error
+
+  validate:
+    needs: [prepare, wheels, sdist]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.13'
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+        with:
+          pattern: release-*
+          merge-multiple: true
+          path: dist
+      - name: Check complete platform matrix, identity and metadata
+        env:
+          RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+        run: python scripts/release.py verify dist "$RELEASE_VERSION"
+      - run: python -m pip install -c bindings/python/requirements-dev.txt twine
+      - run: python -m twine check --strict dist/*
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: normalizer-or-distributions
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    needs: [prepare, validate]
+    if: needs.prepare.outputs.destination != 'build'
+    runs-on: ubuntu-24.04
+    environment:
+      name: ${{ needs.prepare.outputs.destination }}
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+        with:
+          name: normalizer-or-distributions
+          path: dist
+      - name: Publish to TestPyPI
+        if: needs.prepare.outputs.destination == 'testpypi'
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
+      - name: Publish to PyPI
+        if: needs.prepare.outputs.destination == 'pypi'
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086
+        with:
+          skip-existing: true

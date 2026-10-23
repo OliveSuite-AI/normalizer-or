@@ -5,7 +5,13 @@ from pathlib import Path
 from dataclasses import FrozenInstanceError
 
 import pytest
-from normalizer_or import CancellationToken, Hint, NormalizationError, Normalizer
+from normalizer_or import (
+    NORMALIZER_ID,
+    CancellationToken,
+    Hint,
+    NormalizationError,
+    Normalizer,
+)
 from scripts.contracts import check_fixture_case, run_request
 
 CASES = json.loads(
@@ -23,7 +29,7 @@ def partition(text, result):
     assert "".join(s.text for s in result.segments) == result.normalized_text
     assert result.complete == (not result.issues)
     assert result.locale == "or-IN"
-    assert result.normalizer_id == "normalizer-or/0.1.0"
+    assert result.normalizer_id == NORMALIZER_ID
 
 
 @pytest.mark.parametrize("case", CASES, ids=lambda c: c["id"])

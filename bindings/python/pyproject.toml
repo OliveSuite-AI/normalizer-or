@@ -5,6 +5,7 @@ build-backend = "maturin"
 [project]
 name = "normalizer-or"
 version = "0.1.0"
+authors = [{ name = "Sambit Sekhar" }]
 description = "Typed Python binding for the bounded Rust Odia text normalizer"
 requires-python = ">=3.11,<3.15"
 license = "Apache-2.0"
