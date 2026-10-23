@@ -12,15 +12,15 @@ A Rust engine with a typed Python API for Odia speech normalization and written-
 [![Publish](https://github.com/OliveSuite-AI/normalizer-or/actions/workflows/release.yml/badge.svg)](https://github.com/OliveSuite-AI/normalizer-or/actions/workflows/release.yml)
 [![Robustness](https://github.com/OliveSuite-AI/normalizer-or/actions/workflows/robustness.yml/badge.svg)](https://github.com/OliveSuite-AI/normalizer-or/actions/workflows/robustness.yml)
 [![PyPI](https://img.shields.io/pypi/v/normalizer-or)](https://pypi.org/project/normalizer-or/)
-[![Python](https://img.shields.io/badge/Python-3.11%E2%80%933.14-3776AB?logo=python&logoColor=white)](bindings/python/README.md)
-[![Rust](https://img.shields.io/badge/Rust-1.94%2B-CE422B?logo=rust)](Cargo.toml)
-[![License](https://img.shields.io/badge/License-Apache--2.0-blue)](LICENSE)
-[![Typed](https://img.shields.io/badge/typing-py.typed-22863A)](bindings/python/python/normalizer_or)
-[![Status](https://img.shields.io/badge/status-alpha-orange)](src/data/provenance.md)
+[![Python](https://img.shields.io/badge/Python-3.11%E2%80%933.14-3776AB?logo=python&logoColor=white)](https://github.com/OliveSuite-AI/normalizer-or/blob/main/bindings/python/README.md)
+[![Rust](https://img.shields.io/badge/Rust-1.94%2B-CE422B?logo=rust)](https://github.com/OliveSuite-AI/normalizer-or/blob/main/Cargo.toml)
+[![License](https://img.shields.io/badge/License-Apache--2.0-blue)](https://github.com/OliveSuite-AI/normalizer-or/blob/main/LICENSE)
+[![Typed](https://img.shields.io/badge/typing-py.typed-22863A)](https://github.com/OliveSuite-AI/normalizer-or/tree/main/bindings/python/python/normalizer_or)
+[![Status](https://img.shields.io/badge/status-alpha-orange)](https://github.com/OliveSuite-AI/normalizer-or/blob/main/src/data/provenance.md)
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/OliveSuite-AI/normalizer-or/blob/main/bindings/python/examples/normalizer_or_colab.ipynb)
 
-[Quick start](#quick-start) · [Examples](#examples) · [Python API](bindings/python/README.md) · [Formats](docs/normalization.md) · [Publishing](docs/publishing.md)
+[Quick start](#quick-start) · [Examples](#examples) · [Python API](https://github.com/OliveSuite-AI/normalizer-or/blob/main/bindings/python/README.md) · [Formats](https://github.com/OliveSuite-AI/normalizer-or/blob/main/docs/normalization.md) · [Publishing](https://github.com/OliveSuite-AI/normalizer-or/blob/main/docs/publishing.md)
 
 </div>
 
@@ -61,7 +61,7 @@ uv pip install normalizer-or
 uv add normalizer-or
 ```
 
-PyPI publication requires the one-time [publisher setup](docs/publishing.md).
+PyPI publication requires the one-time [publisher setup](https://github.com/OliveSuite-AI/normalizer-or/blob/main/docs/publishing.md).
 The PyPI version badge populates after the first upload. Until then, install
 from GitHub with Git and Rust available:
 
@@ -120,7 +120,7 @@ speech normalization never silently rewrites the input first.
 | `09:30` | ନଅ ଘଣ୍ଟା ତିରିଶ ମିନିଟ |
 
 Try the [Colab notebook](https://colab.research.google.com/github/OliveSuite-AI/normalizer-or/blob/main/bindings/python/examples/normalizer_or_colab.ipynb)
-in a fresh CPU runtime, or run all seven [self-checking Python scripts](bindings/python/examples/README.md):
+in a fresh CPU runtime, or run all seven [self-checking Python scripts](https://github.com/OliveSuite-AI/normalizer-or/blob/main/bindings/python/examples/README.md):
 
 ```sh
 python bindings/python/examples/run_all.py
@@ -153,25 +153,25 @@ fn main() -> Result<(), NormalizeError> {
 
 CI checks the Rust core, minimum Rust version, Python bindings and independent
 Rust/Python conformance records. Scheduled robustness jobs exercise additional
-seeds and long inputs. The [testing guide](docs/testing.md) explains replaying failures.
+seeds and long inputs. The [testing guide](https://github.com/OliveSuite-AI/normalizer-or/blob/main/docs/testing.md) explains replaying failures.
 
 A merged PR to `main` is published **after its CI passes**. Release automation
 allocates a new patch version, builds and tests 16 wheels plus an sdist, validates
 metadata, and uploads through PyPI Trusted Publishing. Manual build-only and
-TestPyPI runs are available. See [release setup and versioning](docs/publishing.md).
+TestPyPI runs are available. See [release setup and versioning](https://github.com/OliveSuite-AI/normalizer-or/blob/main/docs/publishing.md).
 
 ## Documentation
 
 | Guide | Contents |
 |---|---|
-| [Python API](bindings/python/README.md) | Results, hints, controls and errors |
-| [Normalization contract](docs/normalization.md) | Formats, boundaries, policies and limits |
-| [Runnable examples](bindings/python/examples/README.md) | Scripts and Colab notebook |
-| [Publishing](docs/publishing.md) | PyPI setup, automatic versions and release recovery |
-| [Development](CONTRIBUTING.md) | Build and verification commands |
-| [Robustness](docs/testing.md) | Oracles, properties and cross-language checks |
-| [Performance](PERFORMANCE.md) | Measurement guidance |
-| [Provenance](src/data/provenance.md) | Vocabulary and review status |
+| [Python API](https://github.com/OliveSuite-AI/normalizer-or/blob/main/bindings/python/README.md) | Results, hints, controls and errors |
+| [Normalization contract](https://github.com/OliveSuite-AI/normalizer-or/blob/main/docs/normalization.md) | Formats, boundaries, policies and limits |
+| [Runnable examples](https://github.com/OliveSuite-AI/normalizer-or/blob/main/bindings/python/examples/README.md) | Scripts and Colab notebook |
+| [Publishing](https://github.com/OliveSuite-AI/normalizer-or/blob/main/docs/publishing.md) | PyPI setup, automatic versions and release recovery |
+| [Development](https://github.com/OliveSuite-AI/normalizer-or/blob/main/CONTRIBUTING.md) | Build and verification commands |
+| [Robustness](https://github.com/OliveSuite-AI/normalizer-or/blob/main/docs/testing.md) | Oracles, properties and cross-language checks |
+| [Performance](https://github.com/OliveSuite-AI/normalizer-or/blob/main/PERFORMANCE.md) | Measurement guidance |
+| [Provenance](https://github.com/OliveSuite-AI/normalizer-or/blob/main/src/data/provenance.md) | Vocabulary and review status |
 
-Licensed under [Apache-2.0](LICENSE). Required source and dependency credits remain
-in [third-party notices](THIRD_PARTY_NOTICES.md).
+Licensed under [Apache-2.0](https://github.com/OliveSuite-AI/normalizer-or/blob/main/LICENSE). Required source and dependency credits remain
+in [third-party notices](https://github.com/OliveSuite-AI/normalizer-or/blob/main/THIRD_PARTY_NOTICES.md).

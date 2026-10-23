@@ -22,6 +22,9 @@ env:
   RUSTUP_TOOLCHAIN: '1.99.0'
   PROPTEST_CASES: '512'
   PROPTEST_RNG_SEED: '1729'
+defaults:
+  run:
+    shell: bash
 jobs:
   prepare:
     permissions:
