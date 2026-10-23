@@ -1,5 +1,12 @@
 # Runnable Python examples
 
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/OliveSuite-AI/normalizer-or/blob/main/bindings/python/examples/normalizer_or_colab.ipynb)
+
+For Google Colab, open the notebook above in a fresh CPU runtime and select
+**Runtime → Run all**. It installs the pinned source revision and Rust, then
+demonstrates the API and runs all seven scripts. No GPU or API key is needed.
+Initial source compilation needs internet and can take several minutes.
+
 From the repository root, install the package into your active virtual environment:
 
 ```sh
@@ -55,3 +62,7 @@ installed in the same environment:
 ```sh
 python -m pytest bindings/python/tests -q
 ```
+
+Notebook example cells are also executed in the test suite against the installed
+package. The network/toolchain setup cell is syntax-checked locally; a hosted
+Colab runtime is needed to validate that installation step end to end.

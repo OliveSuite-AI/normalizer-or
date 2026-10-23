@@ -2,6 +2,8 @@
 
 **Author:** Sambit Sekhar
 
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/OliveSuite-AI/normalizer-or/blob/main/bindings/python/examples/normalizer_or_colab.ipynb)
+
 Offline Odia text normalization with a Rust core and a typed Python API.
 Licensed under Apache-2.0. It needs no speech model, network service, or Python runtime dependencies.
 
