@@ -1,29 +1,9 @@
-"""Run against an installed wheel; no model or audio dependencies."""
+"""Odia-only speech and written cleanup examples."""
 
-from normalizer_tr import Normalizer, NormalizationError, Hint
+from normalizer_or import Normalizer
 
 n = Normalizer()
-for text in (
-    "25 TL",
-    "3'üncü",
-    "25 TL; 1.234",
-    "1.'nin",
-    "10-15 kişi",
-    "0850 222 33 44",
-    "info@ornek.com",
-):
-    result = n.normalize(text)
-    print(
-        {
-            "input": text,
-            "normalized_text": result.normalized_text,
-            "complete": result.complete,
-            "issues": result.issues,
-        }
-    )
-try:
-    n.normalize("1.234", ambiguity_policy="reject")
-except NormalizationError as error:
-    print({"code": error.code, "issues": error.issues})
-assert n.normalize("IV", hints=(Hint(0, 2, "roman"),)).normalized_text == "dört"
-print({"normalizer_id": n.normalizer_id})
+for source in ["୨୫ kg", "₹1,23,456.50", "23/10/2026", "09:30", "English ଓଡ଼ିଆ 123"]:
+    result = n.normalize(source)
+    print(source, "→", result.normalized_text, "complete:", result.complete)
+print(n.clean("  123\n", digits="odia", whitespace="collapse").normalized_text)

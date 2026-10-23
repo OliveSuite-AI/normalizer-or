@@ -1,249 +1,36 @@
-name: Release artifacts
-
+name: Build Odia release artifacts
 on:
   workflow_dispatch:
-    inputs:
-      publish:
-        description: Publish verified artifacts to PyPI (release tag only)
-        type: boolean
-        default: false
-
 permissions:
   contents: read
-
-concurrency:
-  group: release-${{ github.ref }}
-  cancel-in-progress: false
-
 jobs:
-  preflight:
-    name: Publication revision checks
+  build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    permissions:
-      contents: read
-      actions: read
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
-        with:
-          python-version: "3.13"
-      - name: Verify locked Python tool pins
-        run: python -m scripts.ci_checks pins
-      - name: Verify publishing source against exact main CI
-        if: inputs.publish
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.ref_name }}
-          REPOSITORY: ${{ github.repository }}
-        run: python -m scripts.release_artifacts preflight --tag "$RELEASE_TAG" --repository "$REPOSITORY"
-      - name: Verify consistent versions for build-only dispatch
-        if: '!inputs.publish'
-        run: python -m scripts.release_artifacts versions
-
-  advisories:
-    needs: preflight
-    uses: ./.github/workflows/advisories.yml
-    with:
-      scan: true
-
-  wheels:
-    needs: [preflight, advisories]
-    name: ${{ matrix.platform }} / CPython ${{ matrix.python }}
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        python: ["3.11", "3.12", "3.13", "3.14"]
-        platform: [windows, linux, macos-x64, macos-arm64]
-        include:
-          - platform: windows
-            os: windows-latest
-            target: x86_64-pc-windows-msvc
-            architecture: x64
-            manylinux: auto
-          - platform: linux
-            os: ubuntu-24.04
-            target: x86_64-unknown-linux-gnu
-            architecture: x64
-            manylinux: "2_28"
-          - platform: macos-x64
-            os: macos-15-intel
-            target: x86_64-apple-darwin
-            architecture: x64
-            manylinux: auto
-          - platform: macos-arm64
-            os: macos-15
-            target: aarch64-apple-darwin
-            architecture: arm64
-            manylinux: auto
-    defaults:
-      run:
-        shell: bash
-    env:
-      PYTHONUTF8: "1"
-      MACOSX_DEPLOYMENT_TARGET: "12.0"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
-          python-version: ${{ matrix.python }}
-          architecture: ${{ matrix.architecture }}
-      - name: Isolate the release toolchain from the runner image
-        run: echo "RUSTUP_HOME=$RUNNER_TEMP/normalizer-rustup" >> "$GITHUB_ENV"
+          python-version: '3.13'
       - uses: dtolnay/rust-toolchain@89b12181fb390509a0842a86cc55eeb8eb928c1d
         with:
-          toolchain: "1.99.0"
-          components: rustfmt, clippy
-      - name: Test native core on host
-        run: cargo test --locked --all-features
-      - id: tools
-        name: Read reviewed build tool version
-        run: echo "maturin=$(python -m scripts.ci_checks tool-version --tool maturin)" >> "$GITHUB_OUTPUT"
-      - name: Build interpreter-specific wheel
-        uses: PyO3/maturin-action@e83996d129638aa358a18fbd1dfb82f0b0fb5d3b
-        with:
-          maturin-version: ${{ steps.tools.outputs.maturin }}
-          rust-toolchain: "1.99.0"
-          target: ${{ matrix.target }}
-          manylinux: ${{ matrix.manylinux }}
-          args: --release --locked --manifest-path bindings/python/Cargo.toml --interpreter ${{ matrix.platform == 'linux' && format('python{0}', matrix.python) || 'python' }} --out dist
-      - name: Install exact wheel and test public API
+          toolchain: '1.99.0'
+      - run: python -m pip install -c bindings/python/requirements-dev.txt maturin pytest
+      - run: cargo test --locked --all-features
+      - run: python -m maturin build --locked --release --sdist --manifest-path bindings/python/Cargo.toml --interpreter python --out target/release-artifacts
+      - name: Test exact wheel
+        shell: python
         run: |
-          python -m pip install --constraint bindings/python/requirements-dev.txt pytest twine
-          python -m pip check
-          python -m scripts.ci_checks installed --tools pytest twine
-          python -m scripts.release_artifacts inspect dist --python "${{ matrix.python }}" --platform "${{ matrix.platform }}"
-          python -m twine check --strict dist/*
-          python -m pip install --no-deps dist/*.whl
-          python -m pytest bindings/python/tests -q
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+          import pathlib, subprocess, sys
+          wheel, = pathlib.Path('target/release-artifacts').glob('*.whl')
+          subprocess.run([sys.executable, '-m', 'pip', 'install', '--no-deps', str(wheel)], check=True)
+          subprocess.run([sys.executable, '-m', 'pytest', 'bindings/python/tests', '-q'], check=True)
+      - run: cargo package --locked -p normalizer-or
+      - name: Upload build artifacts (no registry publication)
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
-          name: wheel-${{ matrix.platform }}-${{ matrix.python }}
-          path: dist/*.whl
-          if-no-files-found: error
-
-  source:
-    needs: [preflight, advisories]
-    name: Source distribution and core archive
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          persist-credentials: false
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
-        with:
-          python-version: "3.13"
-      - name: Isolate the source-build toolchain from the runner image
-        run: echo "RUSTUP_HOME=$RUNNER_TEMP/normalizer-rustup" >> "$GITHUB_ENV"
-      - uses: dtolnay/rust-toolchain@89b12181fb390509a0842a86cc55eeb8eb928c1d
-        with:
-          toolchain: "1.99.0"
-          components: rustfmt, clippy
-      - name: Build and consume sdist
-        run: |
-          python -m pip install --constraint bindings/python/requirements-dev.txt maturin pytest twine
-          python -m pip check
-          python -m scripts.ci_checks installed --tools maturin pytest twine
-          cargo metadata --locked --no-deps --format-version 1 > /dev/null
-          python -m maturin sdist --manifest-path bindings/python/Cargo.toml --out dist
-          python -m scripts.release_artifacts inspect dist --sdist
-          python -m twine check --strict dist/*
-          python -m pip install --no-deps dist/*.tar.gz
-          python -m pytest bindings/python/tests -q
-      - name: Package and dry-run core publication
-        run: |
-          cargo package -p normalizer-tr --locked
-          cargo publish -p normalizer-tr --locked --dry-run
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        with:
-          name: source-distribution
-          path: dist/*.tar.gz
-          if-no-files-found: error
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        with:
-          name: core-archive
-          path: target/package/normalizer-tr-*.crate
-          if-no-files-found: error
-
-  inspect:
-    name: Complete artifact set and provenance
-    needs: [wheels, source]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          persist-credentials: false
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
-        with:
-          python-version: "3.13"
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
-        with:
-          pattern: wheel-*
-          path: dist
-          merge-multiple: true
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
-        with:
-          name: source-distribution
-          path: dist
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
-        with:
-          name: core-archive
-          path: target/release-core
-      - name: Check complete matrix and emit release manifest
-        run: |
-          python -m unittest scripts.tests.test_release_artifacts
-          python -m scripts.release_artifacts manifest dist --core target/release-core --output release-manifest.json
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        with:
-          name: verified-release
+          name: normalizer-or-artifacts
           path: |
-            dist/*
-            release-manifest.json
-            target/release-core/*
-          if-no-files-found: error
-
-  publish:
-    name: Owner-controlled PyPI publication
-    if: inputs.publish && startsWith(github.ref, 'refs/tags/v') && github.repository == 'erdemtuna/normalizer-tr'
-    needs: [inspect]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    environment: pypi
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          persist-credentials: false
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
-        with:
-          python-version: "3.13"
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
-        with:
-          name: verified-release
-          path: verified
-      - name: Verify release tag and exact artifact checksums
-        run: python -m scripts.release_artifacts verify verified --tag "${{ github.ref_name }}"
-      - name: Publish with short-lived PyPI identity
-        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33
-        with:
-          packages-dir: verified/dist
-          print-hash: true
-      - name: Verify published bytes and a fresh Python consumer
-        run: python -m scripts.release_artifacts registry verified --registry pypi --output "$RUNNER_TEMP/registry-verification"
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: always()
-        with:
-          name: pypi-registry-verification
-          path: ${{ runner.temp }}/registry-verification/registry-verification.json
-          if-no-files-found: warn
+            target/release-artifacts/*
+            target/package/normalizer-or-*.crate

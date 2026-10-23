@@ -4,10 +4,10 @@ use std::{
     time::{Duration, Instant},
 };
 
-use normalizer_tr::{
-    AmbiguityPolicy, FallbackClass, FallbackDiagnostic, FallbackReason, FallbackStrategy, Hint,
-    HintKind, Issue, IssueCategory, LimitKind, NormalizeError, NormalizeOptions, Normalizer,
-    SegmentKind, SourceRange, WorkControl,
+use normalizer_or::{
+    AmbiguityPolicy, CleanOptions, DigitStyle, FallbackClass, FallbackDiagnostic, FallbackReason,
+    FallbackStrategy, Hint, HintKind, Issue, IssueCategory, LimitKind, NormalizeError,
+    NormalizeOptions, Normalizer, SegmentKind, SourceRange, WhitespacePolicy, WorkControl,
 };
 use pyo3::{create_exception, exceptions::PyException, prelude::*};
 
@@ -123,6 +123,7 @@ fn error(error: NormalizeError) -> PyErr {
 
 fn segment_kind(kind: SegmentKind) -> &'static str {
     match kind {
+        SegmentKind::Normalization => "normalization",
         SegmentKind::Verbatim => "verbatim",
         SegmentKind::Unresolved => "unresolved",
         SegmentKind::Cardinal => "cardinal",
@@ -153,7 +154,7 @@ struct Controls {
     active: BTreeMap<u64, WorkControl>,
 }
 
-#[pyclass(frozen, skip_from_py_object, module = "normalizer_tr._native")]
+#[pyclass(frozen, skip_from_py_object, module = "normalizer_or._native")]
 #[derive(Clone, Default)]
 struct CancellationToken {
     controls: Arc<Mutex<Controls>>,
@@ -203,7 +204,7 @@ impl CancellationToken {
     }
 }
 
-#[pyclass(frozen, name = "NativeNormalizer", module = "normalizer_tr._native")]
+#[pyclass(frozen, name = "NativeNormalizer", module = "normalizer_or._native")]
 struct NativeNormalizer {
     inner: Normalizer,
 }
@@ -248,11 +249,6 @@ impl NativeNormalizer {
                     "digits" => HintKind::Digits,
                     "date" => HintKind::Date,
                     "time" => HintKind::Time,
-                    "ordinal" => HintKind::Ordinal,
-                    "roman" => HintKind::Roman,
-                    "range" => HintKind::Range,
-                    "telephone" => HintKind::Telephone,
-                    "electronic" => HintKind::Electronic,
                     _ => return Err(pyo3::exceptions::PyValueError::new_err("invalid hint kind")),
                 };
                 Ok(Hint::new(SourceRange::new(start, end), kind))
@@ -284,28 +280,61 @@ impl NativeNormalizer {
             token.unregister(id).map_err(error)?;
         }
         let result = result.map_err(error)?;
-        let segments = result
-            .segments()
-            .iter()
-            .map(|s| {
-                (
-                    s.range().start(),
-                    s.range().end(),
-                    segment_kind(s.kind()),
-                    s.text().to_owned(),
-                    s.rule_id(),
-                )
-            })
-            .collect();
-        Ok((
-            result.normalized_text().to_owned(),
-            result.locale(),
-            result.normalizer_id(),
-            result.complete(),
-            segments,
-            issues(result.issues()),
-            result.fallbacks().iter().map(fallback_record).collect(),
-        ))
+        result_record(result)
+    }
+    #[pyo3(signature = (text, digits="preserve", whitespace="preserve", token=None, deadline_ms=None))]
+    fn clean(
+        &self,
+        py: Python<'_>,
+        text: String,
+        digits: &str,
+        whitespace: &str,
+        token: Option<PyRef<'_, CancellationToken>>,
+        deadline_ms: Option<u64>,
+    ) -> PyResult<ResultRecord> {
+        let digits = match digits {
+            "preserve" => DigitStyle::Preserve,
+            "ascii" => DigitStyle::Ascii,
+            "odia" => DigitStyle::Odia,
+            _ => {
+                return Err(pyo3::exceptions::PyValueError::new_err(
+                    "invalid digit style",
+                ));
+            }
+        };
+        let whitespace = match whitespace {
+            "preserve" => WhitespacePolicy::Preserve,
+            "collapse" => WhitespacePolicy::Collapse,
+            _ => {
+                return Err(pyo3::exceptions::PyValueError::new_err(
+                    "invalid whitespace policy",
+                ));
+            }
+        };
+        let deadline = match deadline_ms {
+            Some(ms @ 1..=60_000) => Some(
+                Instant::now()
+                    .checked_add(Duration::from_millis(ms))
+                    .ok_or_else(|| error(NormalizeError::Internal))?,
+            ),
+            Some(_) => return Err(pyo3::exceptions::PyValueError::new_err("invalid deadline")),
+            None => None,
+        };
+        let control = WorkControl::new(deadline);
+        let token = token.map(|t| t.clone());
+        let id = token
+            .as_ref()
+            .map(|t| t.register(&control))
+            .transpose()
+            .map_err(error)?;
+        let inner = self.inner.clone();
+        let result = py.detach(move || {
+            inner.clean_controlled(&text, &CleanOptions { digits, whitespace }, &control)
+        });
+        if let (Some(token), Some(id)) = (token, id) {
+            token.unregister(id).map_err(error)?;
+        }
+        result_record(result.map_err(error)?)
     }
 }
 
@@ -317,7 +346,32 @@ fn _native(module: &Bound<'_, PyModule>) -> PyResult<()> {
         "NativeNormalizationError",
         module.py().get_type::<NativeNormalizationError>(),
     )?;
-    module.add("NORMALIZER_ID", normalizer_tr::NORMALIZER_ID)?;
+    module.add("NORMALIZER_ID", normalizer_or::NORMALIZER_ID)?;
     module.add("BUILD_VERSION", env!("CARGO_PKG_VERSION"))?;
     Ok(())
+}
+
+fn result_record(result: normalizer_or::NormalizeResult) -> PyResult<ResultRecord> {
+    let segments = result
+        .segments()
+        .iter()
+        .map(|s| {
+            (
+                s.range().start(),
+                s.range().end(),
+                segment_kind(s.kind()),
+                s.text().to_owned(),
+                s.rule_id(),
+            )
+        })
+        .collect();
+    Ok((
+        result.normalized_text().to_owned(),
+        result.locale(),
+        result.normalizer_id(),
+        result.complete(),
+        segments,
+        issues(result.issues()),
+        result.fallbacks().iter().map(fallback_record).collect(),
+    ))
 }

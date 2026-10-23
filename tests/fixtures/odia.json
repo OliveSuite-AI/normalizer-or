@@ -1,0 +1,1830 @@
+[
+  {
+    "input": "0",
+    "output": "ଶୂନ୍ୟ",
+    "id": "base-0001"
+  },
+  {
+    "input": "୦",
+    "output": "ଶୂନ୍ୟ",
+    "id": "base-0002"
+  },
+  {
+    "input": "25",
+    "output": "ପଚିଶ",
+    "id": "base-0003"
+  },
+  {
+    "input": "୨୫",
+    "output": "ପଚିଶ",
+    "id": "base-0004"
+  },
+  {
+    "input": "1୨3",
+    "output": "ଏକ ଶହ ତେଇଶ",
+    "id": "base-0005"
+  },
+  {
+    "input": "100",
+    "output": "ଏକ ଶହ",
+    "id": "base-0006"
+  },
+  {
+    "input": "999",
+    "output": "ନଅ ଶହ ଅନେଶତ",
+    "id": "base-0007"
+  },
+  {
+    "input": "1,000",
+    "output": "ଏକ ହଜାର",
+    "id": "base-0008"
+  },
+  {
+    "input": "1,00,000",
+    "output": "ଏକ ଲକ୍ଷ",
+    "id": "base-0009"
+  },
+  {
+    "input": "100,000",
+    "output": "ଏକ ଲକ୍ଷ",
+    "id": "base-0010"
+  },
+  {
+    "input": "1,00,00,000",
+    "output": "ଏକ କୋଟି",
+    "id": "base-0011"
+  },
+  {
+    "input": "1,23,456",
+    "output": "ଏକ ଲକ୍ଷ ତେଇଶ ହଜାର ଚାରି ଶହ ଛପନ",
+    "id": "base-0012"
+  },
+  {
+    "input": "123,456",
+    "output": "ଏକ ଲକ୍ଷ ତେଇଶ ହଜାର ଚାରି ଶହ ଛପନ",
+    "id": "base-0013"
+  },
+  {
+    "input": "0005",
+    "output": "ଶୂନ୍ୟ ଶୂନ୍ୟ ଶୂନ୍ୟ ପାଞ୍ଚ",
+    "id": "base-0014"
+  },
+  {
+    "input": "୦୧୨",
+    "output": "ଶୂନ୍ୟ ଏକ ଦୁଇ",
+    "id": "base-0015"
+  },
+  {
+    "input": "-0",
+    "output": "ବିଯୁକ୍ତ ଶୂନ୍ୟ",
+    "id": "base-0016"
+  },
+  {
+    "input": "+୫",
+    "output": "ଯୁକ୍ତ ପାଞ୍ଚ",
+    "id": "base-0017"
+  },
+  {
+    "input": "12.050",
+    "output": "ବାର ଦଶମିକ ଶୂନ୍ୟ ପାଞ୍ଚ ଶୂନ୍ୟ",
+    "id": "base-0018"
+  },
+  {
+    "input": "୧୨.୫୦",
+    "output": "ବାର ଦଶମିକ ପାଞ୍ଚ ଶୂନ୍ୟ",
+    "id": "base-0019"
+  },
+  {
+    "input": "₹25",
+    "output": "ପଚିଶ ଟଙ୍କା",
+    "id": "base-0020"
+  },
+  {
+    "input": "୨୫ INR",
+    "output": "ପଚିଶ ଟଙ୍କା",
+    "id": "base-0021"
+  },
+  {
+    "input": "INR 25.50",
+    "output": "ପଚିଶ ଟଙ୍କା ପଚାଶ ପଇସା",
+    "id": "base-0022"
+  },
+  {
+    "input": "25₹",
+    "output": "ପଚିଶ ଟଙ୍କା",
+    "id": "base-0023"
+  },
+  {
+    "input": "₹ 25.05",
+    "output": "ପଚିଶ ଟଙ୍କା ପାଞ୍ଚ ପଇସା",
+    "id": "base-0024"
+  },
+  {
+    "input": "₹0.5",
+    "output": "ଶୂନ୍ୟ ଟଙ୍କା ପଚାଶ ପଇସା",
+    "id": "base-0025"
+  },
+  {
+    "input": "₹25.00",
+    "output": "ପଚିଶ ଟଙ୍କା",
+    "id": "base-0026"
+  },
+  {
+    "input": "12.5%",
+    "output": "ବାର ଦଶମିକ ପାଞ୍ଚ ପ୍ରତିଶତ",
+    "id": "base-0027"
+  },
+  {
+    "input": "% ୫",
+    "output": "ପାଞ୍ଚ ପ୍ରତିଶତ",
+    "id": "base-0028"
+  },
+  {
+    "input": "5kg",
+    "output": "ପାଞ୍ଚ କିଲୋଗ୍ରାମ",
+    "id": "base-0029"
+  },
+  {
+    "input": "୫ kg",
+    "output": "ପାଞ୍ଚ କିଲୋଗ୍ରାମ",
+    "id": "base-0030"
+  },
+  {
+    "input": "1.5 L",
+    "output": "ଏକ ଦଶମିକ ପାଞ୍ଚ ଲିଟର",
+    "id": "base-0031"
+  },
+  {
+    "input": "25°C",
+    "output": "ପଚିଶ ଡିଗ୍ରୀ ସେଲସିୟସ",
+    "id": "base-0032"
+  },
+  {
+    "input": "2026-10-23",
+    "output": "ତେଇଶ ଅକ୍ଟୋବର ଦୁଇ ହଜାର ଛବିଶ",
+    "id": "base-0033"
+  },
+  {
+    "input": "୨୩/୧୦/୨୦୨୬",
+    "output": "ତେଇଶ ଅକ୍ଟୋବର ଦୁଇ ହଜାର ଛବିଶ",
+    "id": "base-0034"
+  },
+  {
+    "input": "23-10-2026",
+    "output": "ତେଇଶ ଅକ୍ଟୋବର ଦୁଇ ହଜାର ଛବିଶ",
+    "id": "base-0035"
+  },
+  {
+    "input": "29/02/2024",
+    "output": "ଅଣତିରିଶ ଫେବୃଆରୀ ଦୁଇ ହଜାର ଚବିଶ",
+    "id": "base-0036"
+  },
+  {
+    "input": "09:30",
+    "output": "ନଅ ଘଣ୍ଟା ତିରିଶ ମିନିଟ",
+    "id": "base-0037"
+  },
+  {
+    "input": "୦୦:୦୦",
+    "output": "ଶୂନ୍ୟ ଘଣ୍ଟା ଶୂନ୍ୟ ମିନିଟ",
+    "id": "base-0038"
+  },
+  {
+    "input": "English ଓଡ଼ିଆ 5 kg।",
+    "output": "English ଓଡ଼ିଆ ପାଞ୍ଚ କିଲୋଗ୍ରାମ।",
+    "id": "base-0039"
+  },
+  {
+    "input": "“୨୫”",
+    "output": "“ପଚିଶ”",
+    "id": "base-0040"
+  },
+  {
+    "input": "25;5kg",
+    "output": "ପଚିଶ;ପାଞ୍ଚ କିଲୋଗ୍ରାମ",
+    "id": "base-0041"
+  },
+  {
+    "input": "1.",
+    "output": "ଏକ.",
+    "id": "base-0042"
+  },
+  {
+    "input": "P ଓ S",
+    "output": "P ଓ S",
+    "id": "base-0043"
+  },
+  {
+    "input": "ChatGPT Claude",
+    "output": "ChatGPT Claude",
+    "id": "base-0044"
+  },
+  {
+    "input": "1,23",
+    "complete": false,
+    "id": "base-0045"
+  },
+  {
+    "input": "1,234,56",
+    "complete": false,
+    "id": "base-0046"
+  },
+  {
+    "input": "01,234",
+    "complete": false,
+    "id": "base-0047"
+  },
+  {
+    "input": "12,05",
+    "complete": false,
+    "id": "base-0048"
+  },
+  {
+    "input": "1.2.3",
+    "complete": false,
+    "id": "base-0049"
+  },
+  {
+    "input": "00.5",
+    "complete": false,
+    "id": "base-0050"
+  },
+  {
+    "input": "₹25.005",
+    "complete": false,
+    "id": "base-0051"
+  },
+  {
+    "input": "₹25INR",
+    "complete": false,
+    "id": "base-0052"
+  },
+  {
+    "input": "₹25 INR",
+    "complete": false,
+    "id": "base-0053"
+  },
+  {
+    "input": "01 kg",
+    "complete": false,
+    "id": "base-0054"
+  },
+  {
+    "input": "5 KG",
+    "complete": false,
+    "id": "base-0055"
+  },
+  {
+    "input": "25 USD",
+    "complete": false,
+    "id": "base-0056"
+  },
+  {
+    "input": "25ରେ",
+    "complete": false,
+    "id": "base-0057"
+  },
+  {
+    "input": "୫ରେ",
+    "complete": false,
+    "id": "base-0058"
+  },
+  {
+    "input": "29/02/2025",
+    "complete": false,
+    "id": "base-0059"
+  },
+  {
+    "input": "31/04/2026",
+    "complete": false,
+    "id": "base-0060"
+  },
+  {
+    "input": "00/10/2026",
+    "complete": false,
+    "id": "base-0061"
+  },
+  {
+    "input": "24:00",
+    "complete": false,
+    "id": "base-0062"
+  },
+  {
+    "input": "09:60",
+    "complete": false,
+    "id": "base-0063"
+  },
+  {
+    "input": "09:30:00",
+    "complete": false,
+    "id": "base-0064"
+  },
+  {
+    "input": "AB12",
+    "complete": false,
+    "id": "base-0065"
+  },
+  {
+    "input": "https://example.com/a12?q=5",
+    "complete": false,
+    "id": "base-0066"
+  },
+  {
+    "input": "a12@example.com",
+    "complete": false,
+    "id": "base-0067"
+  },
+  {
+    "input": "1000000000000000000",
+    "complete": false,
+    "id": "base-0068"
+  },
+  {
+    "input": "5%%",
+    "complete": false,
+    "id": "base-0069"
+  },
+  {
+    "input": "12%foo",
+    "complete": false,
+    "id": "base-0070"
+  },
+  {
+    "input": "5kg%",
+    "complete": false,
+    "id": "base-0071"
+  },
+  {
+    "input": "1.000000000",
+    "output": "ଏକ ଦଶମିକ ଶୂନ୍ୟ ଶୂନ୍ୟ ଶୂନ୍ୟ ଶୂନ୍ୟ ଶୂନ୍ୟ ଶୂନ୍ୟ ଶୂନ୍ୟ ଶୂନ୍ୟ ଶୂନ୍ୟ",
+    "id": "base-0072"
+  },
+  {
+    "input": "1.0000000000",
+    "complete": false,
+    "id": "base-0073"
+  },
+  {
+    "input": "1g;2mg;3km;4m;5cm;6mm;7mL",
+    "output": "ଏକ ଗ୍ରାମ;ଦୁଇ ମିଲିଗ୍ରାମ;ତିନି କିଲୋମିଟର;ଚାରି ମିଟର;ପାଞ୍ଚ ସେଣ୍ଟିମିଟର;ଛଅ ମିଲିମିଟର;ସାତ ମିଲିଲିଟର",
+    "id": "base-0074"
+  },
+  {
+    "input": "12 %",
+    "output": "ବାର ପ୍ରତିଶତ",
+    "id": "base-0075"
+  },
+  {
+    "input": "%12",
+    "output": "ବାର ପ୍ରତିଶତ",
+    "id": "base-0076"
+  },
+  {
+    "input": "₹-0.05",
+    "output": "ବିଯୁକ୍ତ ଶୂନ୍ୟ ଟଙ୍କା ପାଞ୍ଚ ପଇସା",
+    "id": "base-0077"
+  },
+  {
+    "input": "0000-01-01",
+    "complete": false,
+    "id": "base-0078"
+  },
+  {
+    "input": "29/02/1900",
+    "complete": false,
+    "id": "base-0079"
+  },
+  {
+    "input": "29/02/2000",
+    "output": "ଅଣତିରିଶ ଫେବୃଆରୀ ଦୁଇ ହଜାର",
+    "id": "base-0080"
+  },
+  {
+    "input": "23:59",
+    "output": "ତେଇଶ ଘଣ୍ଟା ଅଣଷଠି ମିନିଟ",
+    "id": "base-0081"
+  },
+  {
+    "input": "1.234",
+    "output": "ଏକ ଦଶମିକ ଦୁଇ ତିନି ଚାରି",
+    "id": "base-0082"
+  },
+  {
+    "input": "999999999999999999",
+    "output": "ନଅ ହଜାର ନଅ ଶହ ଅନେଶତ କୋଟି ଅନେଶତ ଲକ୍ଷ ଅନେଶତ ହଜାର ନଅ ଶହ ଅନେଶତ କୋଟି ଅନେଶତ ଲକ୍ଷ ଅନେଶତ ହଜାର ନଅ ଶହ ଅନେଶତ",
+    "id": "base-0083"
+  },
+  {
+    "input": "% 12 %",
+    "complete": false,
+    "id": "base-0084"
+  },
+  {
+    "input": "12 % %",
+    "complete": false,
+    "id": "base-0085"
+  },
+  {
+    "input": "%12 %",
+    "complete": false,
+    "id": "base-0086"
+  },
+  {
+    "input": "%%12",
+    "complete": false,
+    "id": "base-0087"
+  },
+  {
+    "input": "12%%",
+    "complete": false,
+    "id": "base-0088"
+  },
+  {
+    "input": "₹1 234",
+    "complete": false,
+    "id": "base-0089"
+  },
+  {
+    "input": "₹ 1 234",
+    "complete": false,
+    "id": "base-0090"
+  },
+  {
+    "input": "123 456 INR",
+    "complete": false,
+    "id": "base-0091"
+  },
+  {
+    "input": "₹1 23 456",
+    "complete": false,
+    "id": "base-0092"
+  },
+  {
+    "input": "₹25 INR INR",
+    "complete": false,
+    "id": "base-0093"
+  },
+  {
+    "input": "₹ 25 ₹",
+    "complete": false,
+    "id": "base-0094"
+  },
+  {
+    "input": "25 INR ₹",
+    "complete": false,
+    "id": "base-0095"
+  },
+  {
+    "input": "5 kg kg",
+    "complete": false,
+    "id": "base-0096"
+  },
+  {
+    "input": "5 kǵ",
+    "complete": false,
+    "id": "base-0097"
+  },
+  {
+    "input": "5 l",
+    "complete": false,
+    "id": "base-0098"
+  },
+  {
+    "input": "+91 98765 43210",
+    "complete": false,
+    "id": "base-0099"
+  },
+  {
+    "input": "+୯୧ ୯୮୭୬୫ ୪୩୨୧୦",
+    "complete": false,
+    "id": "base-0100"
+  },
+  {
+    "input": "+919876543210",
+    "complete": false,
+    "id": "base-0101"
+  },
+  {
+    "input": "+91-98765-43210",
+    "complete": false,
+    "id": "base-0102"
+  },
+  {
+    "input": "+91 98765 432",
+    "complete": false,
+    "id": "base-0103"
+  },
+  {
+    "input": "+91 (98765 43210)",
+    "complete": false,
+    "id": "base-0104"
+  },
+  {
+    "input": "(5 kg)",
+    "output": "(ପାଞ୍ଚ କିଲୋଗ୍ରାମ)",
+    "id": "base-0105"
+  },
+  {
+    "input": "“୫ kg”",
+    "output": "“ପାଞ୍ଚ କିଲୋଗ୍ରାମ”",
+    "id": "base-0106"
+  },
+  {
+    "input": "((5 kg))",
+    "output": "((ପାଞ୍ଚ କିଲୋଗ୍ରାମ))",
+    "id": "base-0107"
+  },
+  {
+    "input": "[\"୫ kg\"]",
+    "output": "[\"ପାଞ୍ଚ କିଲୋଗ୍ରାମ\"]",
+    "id": "base-0108"
+  },
+  {
+    "input": "(5 kg).",
+    "output": "(ପାଞ୍ଚ କିଲୋଗ୍ରାମ).",
+    "id": "base-0109"
+  },
+  {
+    "input": "₹25, ₹30",
+    "output": "ପଚିଶ ଟଙ୍କା, ତିରିଶ ଟଙ୍କା",
+    "id": "base-0110"
+  },
+  {
+    "input": "₹25,₹30",
+    "output": "ପଚିଶ ଟଙ୍କା,ତିରିଶ ଟଙ୍କା",
+    "id": "base-0111"
+  },
+  {
+    "input": "25INR,30INR",
+    "output": "ପଚିଶ ଟଙ୍କା,ତିରିଶ ଟଙ୍କା",
+    "id": "base-0112"
+  },
+  {
+    "input": "5kg,6kg",
+    "output": "ପାଞ୍ଚ କିଲୋଗ୍ରାମ,ଛଅ କିଲୋଗ୍ରାମ",
+    "id": "base-0113"
+  },
+  {
+    "input": "5 kg,6 kg",
+    "output": "ପାଞ୍ଚ କିଲୋଗ୍ରାମ,ଛଅ କିଲୋଗ୍ରାମ",
+    "id": "base-0114"
+  },
+  {
+    "input": "୫ kg,୬ kg",
+    "output": "ପାଞ୍ଚ କିଲୋଗ୍ରାମ,ଛଅ କିଲୋଗ୍ରାମ",
+    "id": "base-0115"
+  },
+  {
+    "input": "25, 30",
+    "output": "ପଚିଶ, ତିରିଶ",
+    "id": "base-0116"
+  },
+  {
+    "input": "12%,13%",
+    "output": "ବାର ପ୍ରତିଶତ,ତେର ପ୍ରତିଶତ",
+    "id": "base-0117"
+  },
+  {
+    "input": "(5 kg), (6 kg)",
+    "output": "(ପାଞ୍ଚ କିଲୋଗ୍ରାମ), (ଛଅ କିଲୋଗ୍ରାମ)",
+    "id": "base-0118"
+  },
+  {
+    "input": "Dr.Smith",
+    "output": "Dr.Smith",
+    "id": "base-0119"
+  },
+  {
+    "input": "Dr.Smith 25",
+    "output": "Dr.Smith ପଚିଶ",
+    "id": "base-0120"
+  },
+  {
+    "input": "Smith.Jones",
+    "output": "Smith.Jones",
+    "id": "base-0121"
+  },
+  {
+    "input": "₹25 5 kg",
+    "output": "ପଚିଶ ଟଙ୍କା ପାଞ୍ଚ କିଲୋଗ୍ରାମ",
+    "id": "base-0122"
+  },
+  {
+    "input": "1 2 3",
+    "output": "ଏକ ଦୁଇ ତିନି",
+    "id": "base-0123"
+  },
+  {
+    "input": "phone: 9876543210",
+    "complete": false,
+    "issue_spans": [
+      [
+        7,
+        17
+      ]
+    ],
+    "id": "base-0124"
+  },
+  {
+    "input": "PHONE:9876543210",
+    "complete": false,
+    "issue_spans": [
+      [
+        6,
+        16
+      ]
+    ],
+    "id": "base-0125"
+  },
+  {
+    "input": "tel 98765 43210",
+    "complete": false,
+    "issue_spans": [
+      [
+        4,
+        15
+      ]
+    ],
+    "id": "base-0126"
+  },
+  {
+    "input": "mobile: 98765-43210",
+    "complete": false,
+    "issue_spans": [
+      [
+        8,
+        19
+      ]
+    ],
+    "id": "base-0127"
+  },
+  {
+    "input": "ଫୋନ: ୯୮୭୬୫୪୩୨୧୦",
+    "complete": false,
+    "issue_spans": [
+      [
+        11,
+        41
+      ]
+    ],
+    "id": "base-0128"
+  },
+  {
+    "input": "ମୋବାଇଲ 98765 43210",
+    "complete": false,
+    "issue_spans": [
+      [
+        19,
+        30
+      ]
+    ],
+    "id": "base-0129"
+  },
+  {
+    "input": "(₹1 234)",
+    "complete": false,
+    "issue_spans": [
+      [
+        1,
+        9
+      ]
+    ],
+    "id": "base-0130"
+  },
+  {
+    "input": "“% 12 %”",
+    "complete": false,
+    "issue_spans": [
+      [
+        3,
+        9
+      ]
+    ],
+    "id": "base-0131"
+  },
+  {
+    "input": "(5 kg",
+    "complete": false,
+    "id": "base-0132"
+  },
+  {
+    "input": "5 kg)",
+    "complete": false,
+    "id": "base-0133"
+  },
+  {
+    "input": "( 5 kg",
+    "complete": false,
+    "id": "base-0134"
+  },
+  {
+    "input": "5 kg )",
+    "complete": false,
+    "id": "base-0135"
+  },
+  {
+    "input": "example.com",
+    "complete": false,
+    "id": "base-0136"
+  },
+  {
+    "input": "EXAMPLE.IN",
+    "complete": false,
+    "id": "base-0137"
+  },
+  {
+    "input": "https://localhost/5?a=1,2;3",
+    "complete": false,
+    "id": "base-0138"
+  },
+  {
+    "input": "a12@example.com,foo",
+    "complete": false,
+    "id": "base-0139"
+  },
+  {
+    "input": "phone: 5 kg",
+    "output": "phone: ପାଞ୍ଚ କିଲୋଗ୍ରାମ",
+    "id": "base-0140"
+  },
+  {
+    "input": "+91 kg",
+    "output": "ଯୁକ୍ତ ଏକାନବେ କିଲୋଗ୍ରାମ",
+    "id": "base-0141"
+  },
+  {
+    "input": "(1,23,456)",
+    "output": "(ଏକ ଲକ୍ଷ ତେଇଶ ହଜାର ଚାରି ଶହ ଛପନ)",
+    "id": "base-0142"
+  },
+  {
+    "input": "% 12, 13%",
+    "output": "ବାର ପ୍ରତିଶତ, ତେର ପ୍ରତିଶତ",
+    "id": "base-0143"
+  },
+  {
+    "input": "% % 12",
+    "complete": false,
+    "id": "base-0144"
+  },
+  {
+    "input": "₹1 234 5 kg",
+    "complete": false,
+    "output": "₹1 234 ପାଞ୍ଚ କିଲୋଗ୍ରାମ",
+    "issue_spans": [
+      [
+        0,
+        8
+      ]
+    ],
+    "id": "base-0145"
+  },
+  {
+    "input": "(5 kg]",
+    "complete": false,
+    "id": "base-0146"
+  },
+  {
+    "input": "1,234,56 kg",
+    "complete": false,
+    "id": "base-0147"
+  },
+  {
+    "input": "phone : 9876543210",
+    "complete": false,
+    "issue_spans": [
+      [
+        8,
+        18
+      ]
+    ],
+    "id": "base-0148"
+  },
+  {
+    "input": "+91\t98765\t43210",
+    "complete": false,
+    "issue_spans": [
+      [
+        0,
+        15
+      ]
+    ],
+    "id": "base-0149"
+  },
+  {
+    "input": "+91\n98765 43210",
+    "complete": false,
+    "issue_spans": [
+      [
+        0,
+        15
+      ]
+    ],
+    "id": "base-0150"
+  },
+  {
+    "input": "ଫୋନ : ୯୮୭୬୫୪୩୨୧୦",
+    "complete": false,
+    "issue_spans": [
+      [
+        12,
+        42
+      ]
+    ],
+    "id": "base-0151"
+  },
+  {
+    "input": "%\t12\t%",
+    "complete": false,
+    "id": "base-0152"
+  },
+  {
+    "input": "₹\t25",
+    "complete": false,
+    "id": "base-0153"
+  },
+  {
+    "input": "25\tINR",
+    "complete": false,
+    "id": "base-0154"
+  },
+  {
+    "input": "5\tkg",
+    "complete": false,
+    "id": "base-0155"
+  },
+  {
+    "input": "₹1 234",
+    "complete": false,
+    "id": "base-0156"
+  },
+  {
+    "input": "₹ 25",
+    "output": "ପଚିଶ ଟଙ୍କା",
+    "id": "base-0157"
+  },
+  {
+    "id": "mixed-three-independent-errors",
+    "input": "5 kg; % 12 %; AB12; ₹1 234; 6",
+    "expect": {
+      "preserve": {
+        "normalized_text": "ପାଞ୍ଚ କିଲୋଗ୍ରାମ; % 12 %; AB12; ₹1 234; ଛଅ",
+        "complete": false,
+        "issues": [
+          {
+            "range": [
+              6,
+              12
+            ],
+            "category": "invalid_expression"
+          },
+          {
+            "range": [
+              14,
+              18
+            ],
+            "category": "protected_identifier"
+          },
+          {
+            "range": [
+              20,
+              28
+            ],
+            "category": "invalid_expression"
+          }
+        ],
+        "fallbacks": []
+      },
+      "reject": {
+        "error": "unresolved",
+        "issues": [
+          {
+            "range": [
+              6,
+              12
+            ],
+            "category": "invalid_expression"
+          },
+          {
+            "range": [
+              14,
+              18
+            ],
+            "category": "protected_identifier"
+          },
+          {
+            "range": [
+              20,
+              28
+            ],
+            "category": "invalid_expression"
+          }
+        ]
+      },
+      "fallback": {
+        "normalized_text": "ପାଞ୍ଚ କିଲୋଗ୍ରାମ; ପ୍ରତିଶତ ଏକ ଦୁଇ ପ୍ରତିଶତ; AB ଏକ ଦୁଇ; ଟଙ୍କା ଏକ ଦୁଇ ତିନି ଚାରି; ଛଅ",
+        "complete": true,
+        "issues": [],
+        "fallbacks": [
+          {
+            "range": [
+              6,
+              12
+            ],
+            "attempted_class": "expression",
+            "reason": "invalid_form",
+            "original_category": "invalid_expression",
+            "strategy": "literal"
+          },
+          {
+            "range": [
+              14,
+              18
+            ],
+            "attempted_class": "identifier",
+            "reason": "protected_identifier",
+            "original_category": "protected_identifier",
+            "strategy": "literal"
+          },
+          {
+            "range": [
+              20,
+              28
+            ],
+            "attempted_class": "expression",
+            "reason": "invalid_form",
+            "original_category": "invalid_expression",
+            "strategy": "literal"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "mixed-nfd-wrapped-and-unit-errors",
+    "input": "é [% 12 %]; 5 KG; 6",
+    "expect": {
+      "preserve": {
+        "normalized_text": "é [% 12 %]; 5 KG; ଛଅ",
+        "complete": false,
+        "issues": [
+          {
+            "range": [
+              5,
+              11
+            ],
+            "category": "invalid_expression"
+          },
+          {
+            "range": [
+              14,
+              18
+            ],
+            "category": "unsupported"
+          }
+        ],
+        "fallbacks": []
+      },
+      "reject": {
+        "error": "unresolved",
+        "issues": [
+          {
+            "range": [
+              5,
+              11
+            ],
+            "category": "invalid_expression"
+          },
+          {
+            "range": [
+              14,
+              18
+            ],
+            "category": "unsupported"
+          }
+        ]
+      },
+      "fallback": {
+        "normalized_text": "é [ପ୍ରତିଶତ ଏକ ଦୁଇ ପ୍ରତିଶତ]; ପାଞ୍ଚ KG; ଛଅ",
+        "complete": true,
+        "issues": [],
+        "fallbacks": [
+          {
+            "range": [
+              5,
+              11
+            ],
+            "attempted_class": "expression",
+            "reason": "invalid_form",
+            "original_category": "invalid_expression",
+            "strategy": "literal"
+          },
+          {
+            "range": [
+              14,
+              18
+            ],
+            "attempted_class": "expression",
+            "reason": "unsupported_form",
+            "original_category": "unsupported",
+            "strategy": "literal"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "literal-malformed-group",
+    "input": "1,23",
+    "expect": {
+      "preserve": {
+        "normalized_text": "1,23",
+        "complete": false,
+        "issues": [
+          {
+            "range": [
+              0,
+              4
+            ],
+            "category": "invalid_expression"
+          }
+        ],
+        "fallbacks": [],
+        "segments": [
+          {
+            "range": [
+              0,
+              4
+            ],
+            "kind": "unresolved",
+            "text": "1,23",
+            "rule_id": "source.unresolved"
+          }
+        ]
+      },
+      "reject": {
+        "error": "unresolved",
+        "issues": [
+          {
+            "range": [
+              0,
+              4
+            ],
+            "category": "invalid_expression"
+          }
+        ]
+      },
+      "fallback": {
+        "normalized_text": "ଏକ କମା ଦୁଇ ତିନି",
+        "complete": true,
+        "issues": [],
+        "fallbacks": [
+          {
+            "range": [
+              0,
+              4
+            ],
+            "attempted_class": "expression",
+            "reason": "invalid_form",
+            "original_category": "invalid_expression",
+            "strategy": "literal"
+          }
+        ],
+        "segments": [
+          {
+            "range": [
+              0,
+              4
+            ],
+            "kind": "fallback",
+            "text": "ଏକ କମା ଦୁଇ ତିନି",
+            "rule_id": "source.fallback"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "literal-invalid-clock",
+    "input": "24:00",
+    "expect": {
+      "preserve": {
+        "normalized_text": "24:00",
+        "complete": false,
+        "issues": [
+          {
+            "range": [
+              0,
+              5
+            ],
+            "category": "invalid_expression"
+          }
+        ],
+        "fallbacks": []
+      },
+      "reject": {
+        "error": "unresolved",
+        "issues": [
+          {
+            "range": [
+              0,
+              5
+            ],
+            "category": "invalid_expression"
+          }
+        ]
+      },
+      "fallback": {
+        "normalized_text": "ଦୁଇ ଚାରି କୋଲନ ଶୂନ୍ୟ ଶୂନ୍ୟ",
+        "complete": true,
+        "issues": [],
+        "fallbacks": [
+          {
+            "range": [
+              0,
+              5
+            ],
+            "attempted_class": "expression",
+            "reason": "invalid_form",
+            "original_category": "invalid_expression",
+            "strategy": "literal"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "literal-protected-identifier",
+    "input": "AB12",
+    "expect": {
+      "preserve": {
+        "normalized_text": "AB12",
+        "complete": false,
+        "issues": [
+          {
+            "range": [
+              0,
+              4
+            ],
+            "category": "protected_identifier"
+          }
+        ],
+        "fallbacks": []
+      },
+      "reject": {
+        "error": "unresolved",
+        "issues": [
+          {
+            "range": [
+              0,
+              4
+            ],
+            "category": "protected_identifier"
+          }
+        ]
+      },
+      "fallback": {
+        "normalized_text": "AB ଏକ ଦୁଇ",
+        "complete": true,
+        "issues": [],
+        "fallbacks": [
+          {
+            "range": [
+              0,
+              4
+            ],
+            "attempted_class": "identifier",
+            "reason": "protected_identifier",
+            "original_category": "protected_identifier",
+            "strategy": "literal"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "literal-marked-unit",
+    "input": "5 KG",
+    "expect": {
+      "preserve": {
+        "normalized_text": "5 KG",
+        "complete": false,
+        "issues": [
+          {
+            "range": [
+              0,
+              4
+            ],
+            "category": "unsupported"
+          }
+        ],
+        "fallbacks": []
+      },
+      "reject": {
+        "error": "unresolved",
+        "issues": [
+          {
+            "range": [
+              0,
+              4
+            ],
+            "category": "unsupported"
+          }
+        ]
+      },
+      "fallback": {
+        "normalized_text": "ପାଞ୍ଚ KG",
+        "complete": true,
+        "issues": [],
+        "fallbacks": [
+          {
+            "range": [
+              0,
+              4
+            ],
+            "attempted_class": "expression",
+            "reason": "unsupported_form",
+            "original_category": "unsupported",
+            "strategy": "literal"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "symbol-code-point-exact",
+    "input": "🙂",
+    "expect": {
+      "preserve": {
+        "normalized_text": "🙂",
+        "complete": true,
+        "issues": [],
+        "fallbacks": []
+      },
+      "reject": {
+        "normalized_text": "🙂",
+        "complete": true,
+        "issues": [],
+        "fallbacks": []
+      },
+      "fallback": {
+        "normalized_text": "ୟୁନିକୋଡ୍ ଏକ ଏଫ୍ ଛଅ ଚାରି ଦୁଇ",
+        "complete": true,
+        "issues": [],
+        "fallbacks": [
+          {
+            "range": [
+              0,
+              4
+            ],
+            "attempted_class": "expression",
+            "reason": "unsupported_form",
+            "original_category": "unsupported",
+            "strategy": "unicode_code_point"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "primary-segment-exact",
+    "input": "୫",
+    "output": "ପାଞ୍ଚ",
+    "expect": {
+      "preserve": {
+        "normalized_text": "ପାଞ୍ଚ",
+        "complete": true,
+        "issues": [],
+        "fallbacks": [],
+        "segments": [
+          {
+            "range": [
+              0,
+              3
+            ],
+            "kind": "cardinal",
+            "text": "ପାଞ୍ଚ",
+            "rule_id": "number"
+          }
+        ]
+      },
+      "reject": {
+        "normalized_text": "ପାଞ୍ଚ",
+        "complete": true,
+        "issues": [],
+        "fallbacks": [],
+        "segments": [
+          {
+            "range": [
+              0,
+              3
+            ],
+            "kind": "cardinal",
+            "text": "ପାଞ୍ଚ",
+            "rule_id": "number"
+          }
+        ]
+      },
+      "fallback": {
+        "normalized_text": "ପାଞ୍ଚ",
+        "complete": true,
+        "issues": [],
+        "fallbacks": [],
+        "segments": [
+          {
+            "range": [
+              0,
+              3
+            ],
+            "kind": "cardinal",
+            "text": "ପାଞ୍ଚ",
+            "rule_id": "number"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "regression-double-comma-ascii",
+    "input": "1,,234",
+    "complete": false
+  },
+  {
+    "id": "regression-double-comma-odia",
+    "input": "୧,,୨୩୪",
+    "complete": false
+  },
+  {
+    "id": "regression-double-comma-quantity",
+    "input": "₹25,,₹30",
+    "complete": false
+  },
+  {
+    "id": "regression-double-comma-neighbor",
+    "input": "1,,234; 5 kg",
+    "output": "1,,234; ପାଞ୍ଚ କିଲୋଗ୍ରାମ",
+    "complete": false,
+    "issue_spans": [
+      [
+        0,
+        6
+      ]
+    ]
+  },
+  {
+    "id": "segment-money",
+    "input": "₹25",
+    "expect": {
+      "preserve": {
+        "normalized_text": "ପଚିଶ ଟଙ୍କା",
+        "complete": true,
+        "issues": [],
+        "fallbacks": [],
+        "segments": [
+          {
+            "range": [
+              0,
+              5
+            ],
+            "kind": "money",
+            "text": "ପଚିଶ ଟଙ୍କା",
+            "rule_id": "money.inr"
+          }
+        ]
+      },
+      "reject": {
+        "normalized_text": "ପଚିଶ ଟଙ୍କା",
+        "complete": true,
+        "issues": [],
+        "fallbacks": [],
+        "segments": [
+          {
+            "range": [
+              0,
+              5
+            ],
+            "kind": "money",
+            "text": "ପଚିଶ ଟଙ୍କା",
+            "rule_id": "money.inr"
+          }
+        ]
+      },
+      "fallback": {
+        "normalized_text": "ପଚିଶ ଟଙ୍କା",
+        "complete": true,
+        "issues": [],
+        "fallbacks": [],
+        "segments": [
+          {
+            "range": [
+              0,
+              5
+            ],
+            "kind": "money",
+            "text": "ପଚିଶ ଟଙ୍କା",
+            "rule_id": "money.inr"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "segment-unit",
+    "input": "5 kg",
+    "expect": {
+      "preserve": {
+        "normalized_text": "ପାଞ୍ଚ କିଲୋଗ୍ରାମ",
+        "complete": true,
+        "issues": [],
+        "fallbacks": [],
+        "segments": [
+          {
+            "range": [
+              0,
+              4
+            ],
+            "kind": "unit",
+            "text": "ପାଞ୍ଚ କିଲୋଗ୍ରାମ",
+            "rule_id": "quantity.unit"
+          }
+        ]
+      },
+      "reject": {
+        "normalized_text": "ପାଞ୍ଚ କିଲୋଗ୍ରାମ",
+        "complete": true,
+        "issues": [],
+        "fallbacks": [],
+        "segments": [
+          {
+            "range": [
+              0,
+              4
+            ],
+            "kind": "unit",
+            "text": "ପାଞ୍ଚ କିଲୋଗ୍ରାମ",
+            "rule_id": "quantity.unit"
+          }
+        ]
+      },
+      "fallback": {
+        "normalized_text": "ପାଞ୍ଚ କିଲୋଗ୍ରାମ",
+        "complete": true,
+        "issues": [],
+        "fallbacks": [],
+        "segments": [
+          {
+            "range": [
+              0,
+              4
+            ],
+            "kind": "unit",
+            "text": "ପାଞ୍ଚ କିଲୋଗ୍ରାମ",
+            "rule_id": "quantity.unit"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "segment-percent",
+    "input": "12%",
+    "expect": {
+      "preserve": {
+        "normalized_text": "ବାର ପ୍ରତିଶତ",
+        "complete": true,
+        "issues": [],
+        "fallbacks": [],
+        "segments": [
+          {
+            "range": [
+              0,
+              3
+            ],
+            "kind": "percent",
+            "text": "ବାର ପ୍ରତିଶତ",
+            "rule_id": "percent"
+          }
+        ]
+      },
+      "reject": {
+        "normalized_text": "ବାର ପ୍ରତିଶତ",
+        "complete": true,
+        "issues": [],
+        "fallbacks": [],
+        "segments": [
+          {
+            "range": [
+              0,
+              3
+            ],
+            "kind": "percent",
+            "text": "ବାର ପ୍ରତିଶତ",
+            "rule_id": "percent"
+          }
+        ]
+      },
+      "fallback": {
+        "normalized_text": "ବାର ପ୍ରତିଶତ",
+        "complete": true,
+        "issues": [],
+        "fallbacks": [],
+        "segments": [
+          {
+            "range": [
+              0,
+              3
+            ],
+            "kind": "percent",
+            "text": "ବାର ପ୍ରତିଶତ",
+            "rule_id": "percent"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "segment-date",
+    "input": "2026-10-23",
+    "expect": {
+      "preserve": {
+        "normalized_text": "ତେଇଶ ଅକ୍ଟୋବର ଦୁଇ ହଜାର ଛବିଶ",
+        "complete": true,
+        "issues": [],
+        "fallbacks": [],
+        "segments": [
+          {
+            "range": [
+              0,
+              10
+            ],
+            "kind": "date",
+            "text": "ତେଇଶ ଅକ୍ଟୋବର ଦୁଇ ହଜାର ଛବିଶ",
+            "rule_id": "date.gregorian"
+          }
+        ]
+      },
+      "reject": {
+        "normalized_text": "ତେଇଶ ଅକ୍ଟୋବର ଦୁଇ ହଜାର ଛବିଶ",
+        "complete": true,
+        "issues": [],
+        "fallbacks": [],
+        "segments": [
+          {
+            "range": [
+              0,
+              10
+            ],
+            "kind": "date",
+            "text": "ତେଇଶ ଅକ୍ଟୋବର ଦୁଇ ହଜାର ଛବିଶ",
+            "rule_id": "date.gregorian"
+          }
+        ]
+      },
+      "fallback": {
+        "normalized_text": "ତେଇଶ ଅକ୍ଟୋବର ଦୁଇ ହଜାର ଛବିଶ",
+        "complete": true,
+        "issues": [],
+        "fallbacks": [],
+        "segments": [
+          {
+            "range": [
+              0,
+              10
+            ],
+            "kind": "date",
+            "text": "ତେଇଶ ଅକ୍ଟୋବର ଦୁଇ ହଜାର ଛବିଶ",
+            "rule_id": "date.gregorian"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "segment-time",
+    "input": "09:30",
+    "expect": {
+      "preserve": {
+        "normalized_text": "ନଅ ଘଣ୍ଟା ତିରିଶ ମିନିଟ",
+        "complete": true,
+        "issues": [],
+        "fallbacks": [],
+        "segments": [
+          {
+            "range": [
+              0,
+              5
+            ],
+            "kind": "time",
+            "text": "ନଅ ଘଣ୍ଟା ତିରିଶ ମିନିଟ",
+            "rule_id": "time.digital"
+          }
+        ]
+      },
+      "reject": {
+        "normalized_text": "ନଅ ଘଣ୍ଟା ତିରିଶ ମିନିଟ",
+        "complete": true,
+        "issues": [],
+        "fallbacks": [],
+        "segments": [
+          {
+            "range": [
+              0,
+              5
+            ],
+            "kind": "time",
+            "text": "ନଅ ଘଣ୍ଟା ତିରିଶ ମିନିଟ",
+            "rule_id": "time.digital"
+          }
+        ]
+      },
+      "fallback": {
+        "normalized_text": "ନଅ ଘଣ୍ଟା ତିରିଶ ମିନିଟ",
+        "complete": true,
+        "issues": [],
+        "fallbacks": [],
+        "segments": [
+          {
+            "range": [
+              0,
+              5
+            ],
+            "kind": "time",
+            "text": "ନଅ ଘଣ୍ଟା ତିରିଶ ମିନିଟ",
+            "rule_id": "time.digital"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "segment-digits",
+    "input": "001",
+    "expect": {
+      "preserve": {
+        "normalized_text": "ଶୂନ୍ୟ ଶୂନ୍ୟ ଏକ",
+        "complete": true,
+        "issues": [],
+        "fallbacks": [],
+        "segments": [
+          {
+            "range": [
+              0,
+              3
+            ],
+            "kind": "digits",
+            "text": "ଶୂନ୍ୟ ଶୂନ୍ୟ ଏକ",
+            "rule_id": "number"
+          }
+        ]
+      },
+      "reject": {
+        "normalized_text": "ଶୂନ୍ୟ ଶୂନ୍ୟ ଏକ",
+        "complete": true,
+        "issues": [],
+        "fallbacks": [],
+        "segments": [
+          {
+            "range": [
+              0,
+              3
+            ],
+            "kind": "digits",
+            "text": "ଶୂନ୍ୟ ଶୂନ୍ୟ ଏକ",
+            "rule_id": "number"
+          }
+        ]
+      },
+      "fallback": {
+        "normalized_text": "ଶୂନ୍ୟ ଶୂନ୍ୟ ଏକ",
+        "complete": true,
+        "issues": [],
+        "fallbacks": [],
+        "segments": [
+          {
+            "range": [
+              0,
+              3
+            ],
+            "kind": "digits",
+            "text": "ଶୂନ୍ୟ ଶୂନ୍ୟ ଏକ",
+            "rule_id": "number"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "segment-decimal",
+    "input": "1.50",
+    "expect": {
+      "preserve": {
+        "normalized_text": "ଏକ ଦଶମିକ ପାଞ୍ଚ ଶୂନ୍ୟ",
+        "complete": true,
+        "issues": [],
+        "fallbacks": [],
+        "segments": [
+          {
+            "range": [
+              0,
+              4
+            ],
+            "kind": "decimal",
+            "text": "ଏକ ଦଶମିକ ପାଞ୍ଚ ଶୂନ୍ୟ",
+            "rule_id": "number"
+          }
+        ]
+      },
+      "reject": {
+        "normalized_text": "ଏକ ଦଶମିକ ପାଞ୍ଚ ଶୂନ୍ୟ",
+        "complete": true,
+        "issues": [],
+        "fallbacks": [],
+        "segments": [
+          {
+            "range": [
+              0,
+              4
+            ],
+            "kind": "decimal",
+            "text": "ଏକ ଦଶମିକ ପାଞ୍ଚ ଶୂନ୍ୟ",
+            "rule_id": "number"
+          }
+        ]
+      },
+      "fallback": {
+        "normalized_text": "ଏକ ଦଶମିକ ପାଞ୍ଚ ଶୂନ୍ୟ",
+        "complete": true,
+        "issues": [],
+        "fallbacks": [],
+        "segments": [
+          {
+            "range": [
+              0,
+              4
+            ],
+            "kind": "decimal",
+            "text": "ଏକ ଦଶମିକ ପାଞ୍ଚ ଶୂନ୍ୟ",
+            "rule_id": "number"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "segment-prose",
+    "input": "English",
+    "expect": {
+      "preserve": {
+        "normalized_text": "English",
+        "complete": true,
+        "issues": [],
+        "fallbacks": [],
+        "segments": [
+          {
+            "range": [
+              0,
+              7
+            ],
+            "kind": "verbatim",
+            "text": "English",
+            "rule_id": "source.verbatim"
+          }
+        ]
+      },
+      "reject": {
+        "normalized_text": "English",
+        "complete": true,
+        "issues": [],
+        "fallbacks": [],
+        "segments": [
+          {
+            "range": [
+              0,
+              7
+            ],
+            "kind": "verbatim",
+            "text": "English",
+            "rule_id": "source.verbatim"
+          }
+        ]
+      },
+      "fallback": {
+        "normalized_text": "English",
+        "complete": true,
+        "issues": [],
+        "fallbacks": [],
+        "segments": [
+          {
+            "range": [
+              0,
+              7
+            ],
+            "kind": "verbatim",
+            "text": "English",
+            "rule_id": "source.verbatim"
+          }
+        ]
+      }
+    }
+  }
+]

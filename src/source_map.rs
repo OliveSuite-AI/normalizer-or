@@ -183,10 +183,10 @@ mod tests {
             "\r\r\n\n",
             "\r\n\r\n",
             "\tword\rword\nword\r\n",
-            "ü 12",
+            "ଓଡ଼ିଆ ୧୨",
             "e\u{301} 12",
-            "o\u{308}\r\n12",
-            "I\u{307}12",
+            "କୋ\r\n୧୨",
+            "ଡ\u{0b3c}୧୨",
             ";\u{301}12",
             "\u{301}q\u{301}",
             "a\u{315}\u{300}\u{301} 12",
@@ -235,7 +235,7 @@ mod tests {
 
     #[test]
     fn construction_propagates_pre_cancelled_and_expired_controls() {
-        for input in ["", "word\r\nword", "ö", "o\u{308}"] {
+        for input in ["", "word\r\nword", "କୋ", "କୋ"] {
             let cancelled = WorkControl::default();
             cancelled.cancel();
             for control in [cancelled, WorkControl::new(Some(Instant::now()))] {
@@ -248,7 +248,7 @@ mod tests {
     }
 
     proptest! {
-        #![proptest_config(ProptestConfig::with_cases(128))]
+        #![proptest_config(crate::test_config::config())]
 
         #[test]
         fn permitted_ascii_mapping_matches_grapheme_oracle(

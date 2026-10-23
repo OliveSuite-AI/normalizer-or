@@ -1,12 +1,12 @@
 [package]
-name = "normalizer-tr"
-version = "0.8.0"
+name = "normalizer-or"
+version = "0.1.0"
 edition = "2024"
 rust-version = "1.94"
-description = "Bounded Turkish text-to-speech normalization with original-source diagnostics"
+description = "Bounded Odia text-to-speech normalization with original-source diagnostics"
+repository = "https://github.com/OliveSuite-AI/normalizer-or"
 license = "Apache-2.0"
-repository = "https://github.com/erdemtuna/normalizer-tr"
-keywords = ["turkish", "tts", "normalization", "text-to-speech"]
+keywords = ["odia", "tts", "normalization", "text-to-speech"]
 categories = ["text-processing"]
 publish = ["crates-io"]
 include = ["/src/**", "/tests/**", "/examples/**", "/benches/**", "/docs/**", "/Cargo.toml", "/Cargo.lock", "/rust-toolchain.toml", "/README.md", "/CHANGELOG.md", "/CONTRIBUTING.md", "/PERFORMANCE.md", "/LICENSE", "/THIRD_PARTY_NOTICES.md", "!**/__pycache__/**"]
@@ -19,6 +19,11 @@ name = "latency"
 harness = false
 required-features = ["serde"]
 
+[[example]]
+name = "contract-probe"
+path = "tests/support/contract_probe.rs"
+required-features = ["serde"]
+
 [features]
 default = []
 serde = ["dep:serde"]
@@ -29,7 +34,6 @@ default-members = ["."]
 resolver = "3"
 
 [dependencies]
-regex = "=1.13.1"
 unicode-normalization = "=0.1.25"
 unicode-segmentation = "=1.13.3"
 serde = { version = "=1.0.229", features = ["derive"], optional = true }

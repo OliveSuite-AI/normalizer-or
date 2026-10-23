@@ -11,6 +11,8 @@ pub use diagnostics::{
     FallbackClass, FallbackDiagnostic, FallbackReason, FallbackStrategy, Issue, IssueCategory,
 };
 pub use error::{LimitKind, NormalizeError};
-pub use options::{AmbiguityPolicy, Hint, HintKind, NormalizeOptions};
+pub use options::{
+    AmbiguityPolicy, CleanOptions, DigitStyle, Hint, HintKind, NormalizeOptions, WhitespacePolicy,
+};
 pub use result::{NormalizeResult, Segment, SegmentKind};
 pub use source::SourceRange;

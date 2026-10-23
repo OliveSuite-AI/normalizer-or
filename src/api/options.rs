@@ -20,22 +20,12 @@ pub enum AmbiguityPolicy {
 pub enum HintKind {
     /// An exact integer, including valid grouping and explicit zero-padding intent.
     Cardinal,
-    /// ASCII digits, optional initial plus, and space/dot/slash/hyphen/parentheses.
+    /// ASCII/Odia digits, optional initial plus, and space/dot/slash/hyphen/parentheses.
     Digits,
     /// A valid numeric Gregorian date.
     Date,
     /// A valid 24-hour clock.
     Time,
-    /// Explicit ordinal intent on a numeric period or ordinal suffix expression.
-    Ordinal,
-    /// Canonical uppercase Roman numeral; period establishes ordinal intent.
-    Roman,
-    /// Exact bounded numeric endpoints with optional quantity context.
-    Range,
-    /// Turkish national or +90 telephone reading.
-    Telephone,
-    /// Supported whole ASCII address or cued/hinted bare domain.
-    Electronic,
 }
 
 /// Caller intent at original grapheme-safe byte coordinates.
@@ -67,4 +57,35 @@ pub struct NormalizeOptions {
     pub ambiguity_policy: AmbiguityPolicy,
     /// Non-overlapping, whole-expression hints in original-source coordinates.
     pub hints: Vec<Hint>,
+}
+
+/// Optional written digit conversion; never expands digits into words.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum DigitStyle {
+    /// Keep each digit's original script.
+    #[default]
+    Preserve,
+    /// Convert ASCII/Odia decimal digits to ASCII.
+    Ascii,
+    /// Convert ASCII/Odia decimal digits to Odia.
+    Odia,
+}
+
+/// Written-text whitespace handling.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum WhitespacePolicy {
+    /// Keep whitespace exactly, including line endings.
+    #[default]
+    Preserve,
+    /// Replace each whitespace run with one ordinary space; do not trim.
+    Collapse,
+}
+
+/// Conservative cleanup. NFC is always applied; spelling and joiners are retained.
+#[derive(Clone, Debug, Default)]
+pub struct CleanOptions {
+    /// Optional decimal digit conversion.
+    pub digits: DigitStyle,
+    /// Optional whitespace-run collapse.
+    pub whitespace: WhitespacePolicy,
 }

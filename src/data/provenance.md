@@ -1,66 +1,24 @@
-# Data provenance
+# Odia data provenance and review status
 
-One authored normalizer, one diagnostic package/build identity. Typed lexical/
-phonological inventory is in [domain/lexicon.rs](../domain/lexicon.rs); patterns
-are validated/cached once in [resources.rs](../resources.rs). There is no
-selectable profile, older table or
-older-version mode. Preserve/Reject/Fallback are per-call resolution policies.
+The active Odia vocabulary is a small project-authored table in `src/vocabulary.rs`.
+Number words 0–99 and hundred/thousand/lakh/crore composition, rupee/paise,
+unit names, time labels, and fallback readings are explicit alpha defaults.
+They have automated text goldens, not completed native-speaker or audio review.
+Do not claim production pronunciation quality from `complete=true` or passing tests.
 
-Fallback data and source rendering incorporate parts of Canberk Aslan's
-Apache-2.0 contribution: https://github.com/erdemtuna/normalizer-tr/pull/1,
-head `0a5de68286cacc4f95c754f519899d15fc2c5e73`.
-The inventory is in [notation/symbols.rs](../notation/symbols.rs);
-[THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md) retains attribution.
+Gregorian month spellings were cross-checked against Unicode CLDR **release-48**:
+https://github.com/unicode-org/cldr/blob/release-48/common/main/or.xml
+Copyright © 1991–2025 Unicode, Inc.; Unicode License V3. CLDR is a pinned
+reference for locale vocabulary, not a number-spellout runtime or sentence oracle.
+The Unicode license is retained in THIRD_PARTY_NOTICES.md and Python wheel notices.
+No whole CLDR file, bulk dictionary, learned model, or external engine is bundled.
 
-The [initialism catalog](../domain/lexicon/abbreviations.rs) was reviewed against
-that contribution, with a bounded set of exact keys and explicitly approved
-pronunciation variants. Suffixes select typed readings; the catalog is not an
-acronym detector or a copy of the contribution's contextual abbreviation engine.
+Odia decimal digits U+0B66–U+0B6F are mapped by scalar value. NFC and grapheme
+segmentation come from the locked unicode-normalization/unicode-segmentation
+libraries. Joiners, virama, nukta, and vowel signs are preserved; the implementation
+does not invent equivalences from similar-looking glyphs.
 
-The [foreign-name catalog](../domain/lexicon/pronunciations.rs) contains finite,
-user-reviewed text mappings authored in thematic AI/developer/consumer groups.
-Explicit spelling aliases and Turkish suffix tails accompany each reading.
-These Turkish-readable aliases are not IPA, an official pronunciation dictionary
-or a claim of universal/native TTS pronunciation. No speech/audio model was
-tested, and no bulk dictionary or external model dataset is bundled.
-See [the exact coverage](../../docs/normalization.md#approved-foreign-names).
-
-The nominal suffix rules and regression examples are authored in this project.
-No external morphology library, dictionary or model data is added.
-
-Expanded numeric/date/quantity tails, contextual address aliases and flat
-multiplication goldens are likewise project-authored. Address recognition uses
-finite source patterns, not a gazetteer or postal-assignment dataset. Explicit
-source/target tail metadata and reading choices do not certify account or
-address facts.
-
-Owned Rust code, unit/currency/abbreviation/name/character readings and finite
-source/target/derived-tail metadata are Apache-2.0. No bulk dictionary or
-third-party normalizer source was copied. Exact numeral behavior was
-cross-checked against Unicode CLDR release 48 Turkish RBNF:
-https://github.com/unicode-org/cldr/blob/release-48/common/rbnf/tr.xml
-(Copyright 1991-2025 Unicode; Unicode License V3).
-The notice is retained in [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md);
-CLDR is a reference, not a bundled runtime grammar or whole-sentence oracle.
-
-TDK number/apostrophe/abbreviation writing guidance informed the bounded rules:
-https://tdk.gov.tr/icerik/yazim-kurallari/sayilarin-yazilisi/
-https://tdk.gov.tr/icerik/yazim-kurallari/kesme-isareti/
-https://tdk.gov.tr/icerik/yazim-kurallari/kisaltmalar/
-
-NFC/grapheme behavior comes from the locked unicode-normalization and
-unicode-segmentation dependencies under their own terms. No NFKC, global
-casing rewrite, learned model, private dictionary, account lookup or network
-address fetch is introduced.
-
-The [policy-contract catalog](../../tests/fixtures/policy-contract.json) orders
-authored text expectations from logical group files, shared across Rust and
-installed-Python consumers. Fingerprints cover the catalog and all referenced
-inputs. The original [corpus](../../benches/corpus.json) and
-[intent corpus](../../benches/intent-corpus.json) remain frozen; expanded policy
-coverage is separate measurement data, not a replacement baseline.
-
-Semantic fixtures protect the normalization contract, not a promise of older
-behavior forever. Deliberate reading changes are recorded in the
-[changelog](../../CHANGELOG.md). The financial and IBAN examples are selected
-public test inputs, not account verification or native-language/voice sign-off.
+Source-coordinate mapping, public result records, and cooperative controls
+retain their Apache-2.0 source attribution in THIRD_PARTY_NOTICES.md. Odia
+recognition, vocabulary, rendering, and regression expectations are maintained
+in this repository.

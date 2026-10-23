@@ -5,6 +5,8 @@ use super::{FallbackDiagnostic, Issue, SourceRange};
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum SegmentKind {
+    /// Written-text NFC, digit conversion, or whitespace cleanup.
+    Normalization,
     /// Unchanged ordinary words, whitespace, or punctuation.
     Verbatim,
     /// Preserved unresolved linguistic work.
@@ -13,13 +15,13 @@ pub enum SegmentKind {
     Cardinal,
     /// Integer ordinal.
     Ordinal,
-    /// Exact comma decimal.
+    /// Exact decimal-point number.
     Decimal,
     /// Individual digits.
     Digits,
-    /// Prefix percentage.
+    /// Prefix or trailing percentage.
     Percent,
-    /// Exact approved currency major/minor amount (TRY/USD/EUR/GBP).
+    /// Exact INR major/minor amount.
     Money,
     /// Approved unit quantity or bounded rate.
     Unit,
@@ -31,9 +33,9 @@ pub enum SegmentKind {
     Abbreviation,
     /// Contextual or explicitly hinted numeric range, or validated clock range.
     Range,
-    /// Grouped Turkish telephone expression.
+    /// Reserved for future telephone speech support.
     Telephone,
-    /// Full checksum-valid Turkish IBAN.
+    /// Reserved for future account support.
     Iban,
     /// Canonical uppercase Roman numeral with explicit/contextual intent.
     Roman,

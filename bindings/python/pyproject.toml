@@ -3,9 +3,9 @@ requires = ["maturin==1.15.0"]
 build-backend = "maturin"
 
 [project]
-name = "normalizer-tr"
-version = "0.8.0"
-description = "Typed Python binding for the bounded Rust Turkish text normalizer"
+name = "normalizer-or"
+version = "0.1.0"
+description = "Typed Python binding for the bounded Rust Odia text normalizer"
 requires-python = ">=3.11,<3.15"
 license = "Apache-2.0"
 license-files = ["LICENSE-PROJECT", "THIRD_PARTY_NOTICES-PROJECT.md", "licenses/**/*"]
@@ -26,11 +26,12 @@ classifiers = [
 ]
 
 [project.urls]
-Repository = "https://github.com/erdemtuna/normalizer-tr"
-Issues = "https://github.com/erdemtuna/normalizer-tr/issues"
+Repository = "https://github.com/OliveSuite-AI/normalizer-or"
+Issues = "https://github.com/OliveSuite-AI/normalizer-or/issues"
+Documentation = "https://github.com/OliveSuite-AI/normalizer-or/blob/main/bindings/python/README.md"
 
 [tool.maturin]
 python-source = "python"
-module-name = "normalizer_tr._native"
-include = ["python/normalizer_tr/py.typed", "python/normalizer_tr/*.pyi"]
+module-name = "normalizer_or._native"
+include = ["python/normalizer_or/py.typed", "python/normalizer_or/*.pyi"]
 exclude = ["assets/**"]

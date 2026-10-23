@@ -1,107 +1,90 @@
-# normalizer-tr
+# normalizer-or
 
-[![CI](https://github.com/erdemtuna/normalizer-tr/actions/workflows/ci.yml/badge.svg)](https://github.com/erdemtuna/normalizer-tr/actions/workflows/ci.yml)
+Offline Odia text normalization with a Rust core and a typed Python API.
+Licensed under Apache-2.0. It needs no speech model, network service, or Python runtime dependencies.
 
-Turkish text normalization for speech, with a Rust core and a typed Python API.
-Convert numbers, money, dates, measurements and other supported notation into
-spoken Turkish, with original-source ranges and structured diagnostics.
-Runs offline, without a speech model or service. Decimal and money arithmetic
-is exact.
+Two operations have separate purposes:
+
+- `normalize`: turn supported numbers, INR amounts, dates, clocks, percentages, and units into Odia speech text.
+- `clean`: apply NFC Unicode normalization and optional digit/whitespace conversion to written text.
 
 ```text
-saat 09:30'da 5 kg malzeme ve %12,5'lik fark
-→ saat dokuz otuzda beş kilogram malzeme ve yüzde on iki virgül beşlik fark
+ଆଜି ୨୫ kg ଚାଉଳ। → ଆଜି ପଚିଶ କିଲୋଗ୍ରାମ ଚାଉଳ।
+₹25.50 → ପଚିଶ ଟଙ୍କା ପଚାଶ ପଇସା
 ```
 
 ## Python
 
+Build/install this checkout (CPython 3.11–3.14 and the Rust toolchain are needed
+for a source build; this package has not been published to PyPI):
+
 ```sh
-python -m pip install normalizer-tr
+python -m pip install ./bindings/python
 ```
+
+Install directly from GitHub with pip or uv (a source build requires Rust):
+
+```sh
+python -m pip install "git+https://github.com/OliveSuite-AI/normalizer-or.git#subdirectory=bindings/python"
+# With a virtual environment active:
+uv pip install "git+https://github.com/OliveSuite-AI/normalizer-or.git#subdirectory=bindings/python"
+```
+
+See [Python publishing](docs/publishing.md) for the PyPI release checklist and
+the installation commands that become available after publication.
 
 ```python
-from normalizer_tr import Normalizer
+from normalizer_or import Normalizer
 
 normalizer = Normalizer()
-result = normalizer.normalize("25 TL; 5 kg")
-assert result.normalized_text == "yirmi beş Türk lirası; beş kilogram"
+result = normalizer.normalize("ଆଜି ୨୫ kg ଚାଉଳ।")
+assert result.normalized_text == "ଆଜି ପଚିଶ କିଲୋଗ୍ରାମ ଚାଉଳ।"
 assert result.complete
-```
 
-Wheels support CPython 3.11 to 3.14 on Windows and Linux x64, and macOS
-x64 and arm64. Compatible wheels need no Rust compiler.
-[Platform requirements and source builds](https://github.com/erdemtuna/normalizer-tr/blob/main/bindings/python/README.md#install).
+written = normalizer.clean("  ଓଡ଼ିଆ 123\n", digits="odia", whitespace="collapse")
+assert written.normalized_text == " ଓଡ଼ିଆ ୧୨୩ "
+```
 
 ## Rust
 
-Requires Rust 1.94 or newer. Add to `Cargo.toml`:
+Use a local path dependency until the package is published:
 
 ```toml
 [dependencies]
-normalizer-tr = "0.7"
+normalizer-or = { path = "/path/to/normalizer-or" }
 ```
 
 ```rust
-use normalizer_tr::{NormalizeError, NormalizeOptions, Normalizer};
-
-fn main() -> Result<(), NormalizeError> {
-    let normalizer = Normalizer::new()?;
-    let result = normalizer.normalize("25 TL; 5 kg", &NormalizeOptions::default())?;
-    assert_eq!(result.normalized_text(), "yirmi beş Türk lirası; beş kilogram");
-    assert!(result.complete());
-    Ok(())
-}
+use normalizer_or::{CleanOptions, DigitStyle, NormalizeOptions, Normalizer};
+let n = Normalizer::new()?;
+assert_eq!(n.normalize("୨୫ INR", &NormalizeOptions::default())?.normalized_text(), "ପଚିଶ ଟଙ୍କା");
+let options = CleanOptions { digits: DigitStyle::Odia, ..Default::default() };
+assert_eq!(n.clean("123", &options)?.normalized_text(), "୧୨୩");
+# Ok::<(), normalizer_or::NormalizeError>(())
 ```
 
-Reuse a `Normalizer` across calls. It is cloneable and `Send + Sync`.
-Enable the optional `serde` feature to serialize results.
+## Behavior
 
-## Choose how to handle ambiguity
+ASCII and Odia digits can be mixed. Speech uses Indian lakh/crore scales and
+Odia-script words. English prose, names, and standalone Latin letters stay as written.
+No spelling correction, English transliteration, or general Odia suffix inference is performed.
 
-| Policy | Behavior |
-|---|---|
-| `preserve` (default) | Keep unresolved spans as written. Return `complete=false` and `issues`. |
-| `reject` | Return an error if any span is unresolved. |
-| `fallback` | Render unresolved notation and symbols. Return handled assumptions in `fallbacks`. |
+Unresolved notation has three policies: `preserve` (default) returns unchanged
+source plus issues, `reject` raises an error, and `fallback` reads the written
+source literally with separate fallback diagnostics. Fallback does not repair
+invalid dates or certify identifiers. URLs, emails, and opaque digit-bearing
+identifiers are protected from partial numeric expansion.
 
-```python
-result = normalizer.normalize("1.234; AB12", ambiguity_policy="fallback")
-assert result.normalized_text == "bin iki yüz otuz dört; a be bir iki"
-assert result.complete and not result.issues
-assert result.fallback_used
-```
+Every result includes `locale="or-IN"`, a build identity, source segments, issues,
+and fallback records. **All coordinates are original UTF-8 byte offsets**, including
+Python hints; they are not character positions. Cleanup changes also retain original
+source ranges. Speech never silently runs cleanup first.
 
-In Rust, set `NormalizeOptions.ambiguity_policy` to
-`AmbiguityPolicy::Fallback` or `AmbiguityPolicy::Reject`.
+This is an alpha implementation. Spellings and speech choices are explicit,
+testable project defaults; native-speaker and voice/audio acceptance remain
+required before a production speech release. `complete` reports resolved supported
+work, not pronunciation quality or universal language coverage.
 
-Fallback prefers clear formats, then literal readings and named symbols, then
-spoken Unicode codes. It does not correct invalid facts or certify identifiers.
-Check `fallbacks` when those assumptions matter. Invalid input or hints,
-cancellation and resource limits remain errors in every policy.
-
-Hints provide explicit intent. All hint and diagnostic ranges are original
-UTF-8 byte offsets, not character positions.
-
-## Documentation
-
-| Guide | Contents |
-|---|---|
-| [Rust API (latest release)](https://docs.rs/normalizer-tr) | Published types, methods and examples |
-| [Python API](https://github.com/erdemtuna/normalizer-tr/blob/main/bindings/python/README.md) | Hints, errors, cancellation and building |
-| [Normalization reference](https://github.com/erdemtuna/normalizer-tr/blob/main/docs/normalization.md) | Supported formats and boundaries |
-| [Fallback](https://github.com/erdemtuna/normalizer-tr/blob/main/docs/fallback.md) | Reading strategies and diagnostics |
-| [Contributing](https://github.com/erdemtuna/normalizer-tr/blob/main/CONTRIBUTING.md) | Repository setup, architecture and verification |
-| [Performance](https://github.com/erdemtuna/normalizer-tr/blob/main/PERFORMANCE.md) | Running and interpreting development measurements |
-
-This is a pre 1.0 library with bounded coverage, not a universal pronunciation
-engine. Repository guides follow `main`; the Rust API link documents the latest
-published crate. Before upgrading, read the
-[changelog](https://github.com/erdemtuna/normalizer-tr/blob/main/CHANGELOG.md)
-for changed readings, diagnostics and exhaustive Rust enum matches.
-
-## License
-
-[Apache-2.0](https://github.com/erdemtuna/normalizer-tr/blob/main/LICENSE),
-with [third party notices](https://github.com/erdemtuna/normalizer-tr/blob/main/THIRD_PARTY_NOTICES.md).
-
-Thanks to [@canberk7](https://github.com/canberk7) for his contribution to fallback support.
+See [formats and limits](docs/normalization.md), [Python API](bindings/python/README.md),
+[data provenance](src/data/provenance.md), [development](CONTRIBUTING.md),
+[robustness testing](docs/testing.md), and [performance](PERFORMANCE.md).

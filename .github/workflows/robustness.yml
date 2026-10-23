@@ -1,0 +1,90 @@
+name: Nightly Odia robustness
+on:
+  schedule:
+    - cron: '17 2 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  deep:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        seed: ['1729', '8675309', '20261023', '4294967291']
+    env:
+      PROPTEST_CASES: '10000'
+      PROPTEST_RNG_SEED: ${{ matrix.seed }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.13'
+      - uses: dtolnay/rust-toolchain@89b12181fb390509a0842a86cc55eeb8eb928c1d
+        with:
+          toolchain: '1.99.0'
+      - run: python -m pip install -c bindings/python/requirements-dev.txt maturin pytest
+      - name: Record replay parameters before running tests
+        shell: python
+        run: |
+          import json, os, pathlib, platform, sys
+          output = pathlib.Path('target/robustness')
+          output.mkdir(parents=True, exist_ok=True)
+          (output / 'replay.json').write_text(json.dumps({'seed': os.environ['PROPTEST_RNG_SEED'], 'cases': os.environ['PROPTEST_CASES'], 'platform': platform.platform(), 'python': sys.version}), encoding='utf-8')
+      - run: cargo test --locked --all-features
+      - run: python -m maturin build --locked --release --manifest-path bindings/python/Cargo.toml --interpreter python --out target/wheels
+      - name: Install exact wheel
+        shell: python
+        run: |
+          import pathlib, subprocess, sys
+          wheel, = pathlib.Path('target/wheels').glob('*.whl')
+          subprocess.run([sys.executable, '-m', 'pip', 'install', '--no-deps', str(wheel)], check=True)
+      - run: python -m pytest bindings/python/tests -q
+      - run: cargo build --locked --features serde --example contract-probe
+      - run: python -m scripts.robustness --seed ${{ matrix.seed }} --deep --stress
+      - name: Preserve seeds, counterexamples and conformance records
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: deep-robustness-seed-${{ matrix.seed }}
+          path: |
+            target/robustness/
+            tests/*.proptest-regressions
+            src/**/*.proptest-regressions
+  portability:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-14]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.13'
+      - uses: dtolnay/rust-toolchain@89b12181fb390509a0842a86cc55eeb8eb928c1d
+        with:
+          toolchain: '1.99.0'
+      - run: python -m pip install -c bindings/python/requirements-dev.txt maturin pytest
+      - run: python -m maturin build --locked --release --manifest-path bindings/python/Cargo.toml --interpreter python --out target/wheels
+      - name: Install exact wheel
+        shell: python
+        run: |
+          import pathlib, subprocess, sys
+          wheel, = pathlib.Path('target/wheels').glob('*.whl')
+          subprocess.run([sys.executable, '-m', 'pip', 'install', '--no-deps', str(wheel)], check=True)
+      - run: python -m pytest bindings/python/tests -q
+      - run: cargo build --locked --features serde --example contract-probe
+      - run: python -m scripts.robustness --seed 1729
+      - name: Preserve portability failure evidence
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: portability-${{ matrix.os }}
+          path: target/robustness/

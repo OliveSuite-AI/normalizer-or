@@ -1,42 +1,24 @@
-//! A local, synchronous Turkish text-to-speech normalizer.
-//!
-//! The default preserves unresolved spans and reports them. Use
-//! [`AmbiguityPolicy::Reject`] when partial speech is not acceptable.
-//! [`AmbiguityPolicy::Fallback`] renders unresolved source with separate diagnostics.
-//! Original source ranges are UTF-8 byte coordinates, not character indices.
-//!
-//! ```
-//! use normalizer_tr::{Normalizer, NormalizeOptions};
-//! let normalizer = Normalizer::new()?;
-//! let result = normalizer.normalize("25 TL", &NormalizeOptions::default())?;
-//! assert_eq!(result.normalized_text(), "yirmi beş Türk lirası");
-//! assert!(result.complete());
-//! # Ok::<(), normalizer_tr::NormalizeError>(())
-//! ```
+//! Offline Odia speech normalization and conservative written-text cleanup.
+//! Source coordinates are original, grapheme-safe UTF-8 byte offsets.
 #![forbid(unsafe_code)]
 #![doc = include_str!("../README.md")]
 
 mod api;
-mod classify;
-mod domain;
-mod interpretation;
-mod morphology;
+mod engine;
 mod normalizer;
-mod notation;
 mod numerals;
-mod pipeline;
-mod resolution;
-mod resources;
 mod source_map;
-mod verbalize;
+mod vocabulary;
 
 pub use api::{
-    AmbiguityPolicy, FallbackClass, FallbackDiagnostic, FallbackReason, FallbackStrategy, Hint,
-    HintKind, Issue, IssueCategory, LimitKind, NormalizeError, NormalizeOptions, NormalizeResult,
-    Segment, SegmentKind, SourceRange, WorkControl,
+    AmbiguityPolicy, CleanOptions, DigitStyle, FallbackClass, FallbackDiagnostic, FallbackReason,
+    FallbackStrategy, Hint, HintKind, Issue, IssueCategory, LimitKind, NormalizeError,
+    NormalizeOptions, NormalizeResult, Segment, SegmentKind, SourceRange, WhitespacePolicy,
+    WorkControl,
 };
 pub use normalizer::Normalizer;
-pub use resources::NORMALIZER_ID;
+/// Diagnostic identity of this Odia-only build.
+pub const NORMALIZER_ID: &str = concat!("normalizer-or/", env!("CARGO_PKG_VERSION"));
 
 /// Maximum original UTF-8 input length in bytes.
 pub const MAX_INPUT_BYTES: usize = 32 * 1024;
@@ -46,3 +28,7 @@ pub const MAX_HINTS: usize = 256;
 pub const MAX_CANDIDATES: usize = 4096;
 /// Maximum logical bytes of owned result and diagnostic allocations.
 pub const MAX_RESULT_BYTES: usize = 512 * 1024;
+
+#[cfg(test)]
+#[path = "../tests/support/config.rs"]
+mod test_config;

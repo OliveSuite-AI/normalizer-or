@@ -1,370 +1,149 @@
-use crate::morphology::{Spoken, Word};
+//! Exact decimal parsing and Indian-scale Odia rendering. No floating point.
+use crate::vocabulary::SMALL;
 
 pub(crate) const MAGNITUDE_LIMIT: u64 = 1_000_000_000_000_000_000;
-const GROUP_WIDTH: usize = 3;
-const MAX_FRACTION_DIGITS: usize = 9;
-const MAX_INTEGER_DIGITS: usize = MAGNITUDE_LIMIT.ilog10() as usize;
-const MAX_GROUP_SEPARATORS: usize = (MAX_INTEGER_DIGITS - 1) / GROUP_WIDTH;
-const MAX_STANDARD_NUMBER_BYTES: usize =
-    1 + MAX_INTEGER_DIGITS + MAX_GROUP_SEPARATORS + 1 + MAX_FRACTION_DIGITS;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum Sign {
-    None,
-    Plus,
-    Minus,
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct Amount {
-    sign: Sign,
-    major: u64,
-    minor: u8,
-}
-
-impl Amount {
-    pub(crate) fn parse(text: &str) -> Option<Self> {
-        let number = Number::parse_with_padding(text, false, true)?;
-        Some(Self {
-            sign: number.sign(),
-            major: number.integer(),
-            minor: number.minor()?,
-        })
-    }
-    pub(crate) fn sign(&self) -> Sign {
-        self.sign
-    }
-    pub(crate) fn major(&self) -> u64 {
-        self.major
-    }
-    pub(crate) fn minor(&self) -> u8 {
-        self.minor
+pub(crate) fn digit(ch: char) -> Option<u8> {
+    match ch {
+        '0'..='9' => Some(ch as u8 - b'0'),
+        '୦'..='୯' => Some((ch as u32 - '୦' as u32) as u8),
+        _ => None,
     }
 }
 
-pub(crate) fn amount(amount: &Amount, major: &str, major_tail: Word, minor_tail: Word) -> Spoken {
-    let text = format!(
-        "{}{} {}",
-        sign_text(amount.sign()),
-        cardinal(amount.major()).into_text(),
-        major
-    );
-    let mut spoken = Spoken::lexical(&text, major_tail);
-    if amount.minor() != 0 {
-        spoken.append_literal(&format!(
-            " {}",
-            cardinal(u64::from(amount.minor())).into_text()
-        ));
-        spoken.append_word(minor_tail);
-    }
-    spoken
+pub(crate) fn ascii(text: &str) -> String {
+    text.chars()
+        .map(|ch| digit(ch).map_or(ch, |d| char::from(b'0' + d)))
+        .collect()
 }
 
-#[derive(Clone, Debug)]
-pub(crate) struct Number {
-    sign: Sign,
-    integer: u64,
-    fraction: String,
-    grouped: bool,
-}
-
-impl Number {
-    pub(crate) fn parse(text: &str) -> Option<Self> {
-        if text.len() > MAX_STANDARD_NUMBER_BYTES {
-            return None;
-        }
-        Self::parse_with_padding(text, false, false)
+pub(crate) fn cardinal(value: u64) -> String {
+    if value < 100 {
+        return SMALL[value as usize].to_owned();
     }
-    pub(crate) fn parse_cardinal_hint(text: &str) -> Option<Self> {
-        Self::parse_with_padding(text, true, false)
-    }
-    fn parse_with_padding(text: &str, allow_padding: bool, money_grouping: bool) -> Option<Self> {
-        let (sign, body) = match text.as_bytes().first() {
-            Some(b'-') => (Sign::Minus, &text[1..]),
-            Some(b'+') => (Sign::Plus, &text[1..]),
-            _ => (Sign::None, text),
-        };
-        let mut parts = body.split(',');
-        let whole = parts.next()?;
-        let fraction = parts.next();
-        if parts.next().is_some()
-            || fraction.is_some_and(|f| {
-                !(1..=MAX_FRACTION_DIGITS).contains(&f.len())
-                    || !f.bytes().all(|b| b.is_ascii_digit())
-            })
-        {
-            return None;
-        }
-        let separator = if money_grouping {
-            whole
-                .chars()
-                .find(|c| matches!(c, ' ' | '\u{a0}' | '\u{202f}'))
-                .unwrap_or('.')
-        } else {
-            '.'
-        };
-        let grouped = whole.contains(separator);
-        let mut integer = 0_u64;
-        for (index, group) in whole.split(separator).enumerate() {
-            if group.is_empty()
-                || !group.bytes().all(|b| b.is_ascii_digit())
-                || (!allow_padding && index == 0 && group.len() > 1 && group.starts_with('0'))
-                || (separator != '.' && index == 0 && group.starts_with('0'))
-                || (grouped && index == 0 && group.len() > GROUP_WIDTH)
-                || (index > 0 && group.len() != GROUP_WIDTH)
-            {
-                return None;
+    for (scale, name) in [
+        (10_000_000, "କୋଟି"),
+        (100_000, "ଲକ୍ଷ"),
+        (1000, "ହଜାର"),
+        (100, "ଶହ"),
+    ] {
+        if value >= scale {
+            let mut text = format!("{} {}", cardinal(value / scale), name);
+            if !value.is_multiple_of(scale) {
+                text.push(' ');
+                text.push_str(&cardinal(value % scale));
             }
-            for digit in group.bytes() {
-                integer = integer
-                    .checked_mul(10)?
-                    .checked_add(u64::from(digit - b'0'))?;
-                if integer >= MAGNITUDE_LIMIT {
-                    return None;
-                }
-            }
-        }
-        Some(Self {
-            sign,
-            integer,
-            fraction: fraction.unwrap_or("").to_owned(),
-            grouped,
-        })
-    }
-    pub(crate) fn integer(&self) -> u64 {
-        self.integer
-    }
-    pub(crate) fn fraction(&self) -> &str {
-        &self.fraction
-    }
-    pub(crate) fn sign(&self) -> Sign {
-        self.sign
-    }
-    pub(crate) fn grouped(&self) -> bool {
-        self.grouped
-    }
-    pub(crate) fn minor(&self) -> Option<u8> {
-        match self.fraction.as_bytes() {
-            [] => Some(0),
-            [a] => Some((a - b'0') * 10),
-            [a, b] => Some((a - b'0') * 10 + b - b'0'),
-            _ => None,
+            return text;
         }
     }
-    pub(crate) fn tail(&self) -> Word {
-        self.fraction.as_bytes().last().map_or_else(
-            || cardinal_tail(self.integer),
-            |digit| DIGITS[usize::from(digit - b'0')],
-        )
-    }
-}
-
-use crate::morphology::{Harmony, WordEnd};
-
-const DIGITS: [Word; 10] = [
-    Word::new("sıfır", Harmony::BackFlat, WordEnd::Voiced),
-    Word::new("bir", Harmony::FrontFlat, WordEnd::Voiced),
-    Word::new("iki", Harmony::FrontFlat, WordEnd::Vowel),
-    Word::new("üç", Harmony::FrontRound, WordEnd::Voiceless),
-    Word::new("dört", Harmony::FrontRound, WordEnd::Softens),
-    Word::new("beş", Harmony::FrontFlat, WordEnd::Voiceless),
-    Word::new("altı", Harmony::BackFlat, WordEnd::Vowel),
-    Word::new("yedi", Harmony::FrontFlat, WordEnd::Vowel),
-    Word::new("sekiz", Harmony::FrontFlat, WordEnd::Voiced),
-    Word::new("dokuz", Harmony::BackRound, WordEnd::Voiced),
-];
-const TENS: [Word; 9] = [
-    Word::new("on", Harmony::BackRound, WordEnd::Voiced),
-    Word::new("yirmi", Harmony::FrontFlat, WordEnd::Vowel),
-    Word::new("otuz", Harmony::BackRound, WordEnd::Voiced),
-    Word::new("kırk", Harmony::BackFlat, WordEnd::Voiceless),
-    Word::new("elli", Harmony::FrontFlat, WordEnd::Vowel),
-    Word::new("altmış", Harmony::BackFlat, WordEnd::Voiceless),
-    Word::new("yetmiş", Harmony::FrontFlat, WordEnd::Voiceless),
-    Word::new("seksen", Harmony::FrontFlat, WordEnd::Voiced),
-    Word::new("doksan", Harmony::BackFlat, WordEnd::Voiced),
-];
-const HUNDRED: Word = Word::new("yüz", Harmony::FrontRound, WordEnd::Voiced);
-const SCALES: [Word; 5] = [
-    Word::new("bin", Harmony::FrontFlat, WordEnd::Voiced),
-    Word::new("milyon", Harmony::BackRound, WordEnd::Voiced),
-    Word::new("milyar", Harmony::BackFlat, WordEnd::Voiced),
-    Word::new("trilyon", Harmony::BackRound, WordEnd::Voiced),
-    Word::new("katrilyon", Harmony::BackRound, WordEnd::Voiced),
-];
-
-pub(crate) fn cardinal_tail(mut value: u64) -> Word {
-    if value == 0 {
-        return DIGITS[0];
-    }
-    let mut scale = 0;
-    while value.is_multiple_of(1000) {
-        value /= 1000;
-        scale += 1;
-    }
-    if scale > 0 {
-        return SCALES[scale - 1];
-    }
-    let group = value % 1000;
-    if !group.is_multiple_of(10) {
-        DIGITS[(group % 10) as usize]
-    } else if !group.is_multiple_of(100) {
-        TENS[((group % 100) / 10 - 1) as usize]
-    } else {
-        HUNDRED
-    }
-}
-
-fn push_group(value: u16, words: &mut Vec<Word>) {
-    if value >= 100 {
-        if value / 100 > 1 {
-            words.push(DIGITS[usize::from(value / 100)]);
-        }
-        words.push(HUNDRED);
-    }
-    let rest = value % 100;
-    if rest >= 10 {
-        words.push(TENS[usize::from(rest / 10 - 1)]);
-    }
-    if !rest.is_multiple_of(10) {
-        words.push(DIGITS[usize::from(rest % 10)]);
-    }
-}
-
-/// Only called with validated domain magnitudes or bounded calendar/clock fields.
-pub(crate) fn cardinal(value: u64) -> Spoken {
-    if value == 0 {
-        return Spoken::from_words(&[DIGITS[0]]);
-    }
-    let mut groups = [0_u16; 6];
-    let mut rest = value;
-    for group in &mut groups {
-        *group = (rest % 1000) as u16;
-        rest /= 1000;
-    }
-    let mut words = Vec::with_capacity(24);
-    for index in (0..groups.len()).rev() {
-        let group = groups[index];
-        if group == 0 {
-            continue;
-        }
-        if index != 1 || group != 1 {
-            push_group(group, &mut words);
-        }
-        if index > 0 {
-            words.push(SCALES[index - 1]);
-        }
-    }
-    Spoken::from_words(&words)
-}
-
-pub(crate) fn sign_text(sign: Sign) -> &'static str {
-    match sign {
-        Sign::None => "",
-        Sign::Plus => "artı ",
-        Sign::Minus => "eksi ",
-    }
-}
-
-pub(crate) fn number(number: &Number) -> Spoken {
-    let mut spoken = cardinal(number.integer);
-    spoken.prefix(sign_text(number.sign));
-    if !number.fraction.is_empty() {
-        spoken.append_literal(" virgül");
-        for digit in number.fraction.bytes() {
-            spoken.append_word(DIGITS[usize::from(digit - b'0')]);
-        }
-    }
-    spoken
+    unreachable!("all nonnegative integers have a scale")
 }
 
 pub(crate) fn digits(text: &str) -> String {
-    let mut result = String::new();
-    for ch in text.chars() {
-        let word = match ch {
-            '+' => "artı",
-            '0'..='9' => DIGITS[usize::from(ch as u8 - b'0')].text,
-            _ => continue,
+    text.chars()
+        .filter_map(digit)
+        .map(|d| SMALL[d as usize])
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+#[derive(Debug)]
+pub(crate) struct Number<'a> {
+    pub(crate) integer: u64,
+    pub(crate) fraction: &'a str,
+    pub(crate) sign: &'static str,
+    pub(crate) padded: bool,
+    whole: &'a str,
+}
+
+impl<'a> Number<'a> {
+    // Input has already been converted with the shared ASCII/Odia digit helper.
+    pub(crate) fn parse(text: &'a str, allow_padding: bool) -> Option<Self> {
+        let (sign, body) = if let Some(body) = text.strip_prefix('-') {
+            ("ବିଯୁକ୍ତ ", body)
+        } else if let Some(body) = text.strip_prefix('+') {
+            ("ଯୁକ୍ତ ", body)
+        } else {
+            ("", text)
         };
-        if !result.is_empty() {
-            result.push(' ');
+        let mut parts = body.split('.');
+        let whole = parts.next()?;
+        let fraction = parts.next().unwrap_or("");
+        if parts.next().is_some()
+            || (body.contains('.') && (fraction.is_empty() || fraction.len() > 9))
+            || !fraction.bytes().all(|b| b.is_ascii_digit())
+        {
+            return None;
         }
-        result.push_str(word);
-    }
-    result
-}
-
-pub(crate) fn digit_name(digit: char) -> Option<&'static str> {
-    digit
-        .is_ascii_digit()
-        .then(|| DIGITS[usize::from(digit as u8 - b'0')].text)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn exact_parser_retains_sign_scale_and_grouping() {
-        let number = Number::parse("-1.234,050").unwrap();
-        assert_eq!(number.sign(), Sign::Minus);
-        assert_eq!(number.integer(), 1234);
-        assert_eq!(number.fraction(), "050");
-        assert!(number.grouped());
-        assert_eq!(number.minor(), None);
-        assert_eq!(Number::parse("-0,5").unwrap().minor(), Some(50));
-        assert_eq!(Number::parse("+0,00").unwrap().sign(), Sign::Plus);
-        assert_eq!(Number::parse_cardinal_hint("00042").unwrap().integer(), 42);
-        assert_eq!(
-            Number::parse_cardinal_hint("001.234").unwrap().integer(),
-            1234
-        );
-        assert!(Number::parse_cardinal_hint("0001.234").is_none());
-        assert_eq!(
-            Number::parse("999999999999999999").unwrap().integer(),
-            MAGNITUDE_LIMIT - 1
-        );
-    }
-
-    #[test]
-    fn exact_parser_rejects_invalid_whole_expressions() {
-        for input in [
-            "",
-            "-",
-            "+",
-            "00",
-            "01",
-            "001.000",
-            "1.23",
-            "12.3456",
-            "1..234",
-            "1,2345678900",
-            "1,",
-            "1,2,3",
-            "1e3",
-            "1000000000000000000",
-            "١٢٣",
-        ] {
-            assert!(Number::parse(input).is_none(), "{input}");
+        let groups: Vec<_> = whole.split(',').collect();
+        if groups
+            .iter()
+            .any(|g| g.is_empty() || !g.bytes().all(|b| b.is_ascii_digit()))
+        {
+            return None;
         }
+        if groups.len() > 1 {
+            let western =
+                (1..=3).contains(&groups[0].len()) && groups[1..].iter().all(|g| g.len() == 3);
+            let indian = (1..=2).contains(&groups[0].len())
+                && groups.last()?.len() == 3
+                && groups[1..groups.len() - 1].iter().all(|g| g.len() == 2);
+            if !(western || indian) || groups[0].starts_with('0') {
+                return None;
+            }
+        }
+        let padded = groups.len() == 1 && whole.len() > 1 && whole.starts_with('0');
+        if padded && (!allow_padding || !fraction.is_empty()) {
+            return None;
+        }
+        let mut integer = 0u64;
+        for byte in whole.bytes().filter(|b| *b != b',') {
+            integer = integer
+                .checked_mul(10)?
+                .checked_add(u64::from(byte - b'0'))?;
+            if integer >= MAGNITUDE_LIMIT {
+                return None;
+            }
+        }
+        Some(Self {
+            integer,
+            fraction,
+            sign,
+            padded,
+            whole,
+        })
     }
 
-    #[test]
-    fn normal_number_bound_preserves_maximum_values_and_other_parse_modes() {
-        let maximal = "-999.999.999.999.999.999,123456789";
-        assert_eq!(maximal.len(), MAX_STANDARD_NUMBER_BYTES);
-        assert_eq!(
-            Number::parse(maximal).unwrap().integer(),
-            MAGNITUDE_LIMIT - 1
+    pub(crate) fn render(&self, cardinal_padding: bool) -> String {
+        let mut text = format!(
+            "{}{}",
+            self.sign,
+            if self.padded && !cardinal_padding {
+                digits(self.whole)
+            } else {
+                cardinal(self.integer)
+            }
         );
-        assert_eq!(
-            Number::parse_cardinal_hint(&"0".repeat(512))
-                .unwrap()
-                .integer(),
-            0
-        );
-        let money = "-999\u{202f}999\u{202f}999\u{202f}999\u{202f}999\u{202f}999,99";
-        assert!(money.len() > MAX_STANDARD_NUMBER_BYTES);
-        assert_eq!(Amount::parse(money).unwrap().major(), MAGNITUDE_LIMIT - 1);
+        if !self.fraction.is_empty() {
+            text.push_str(" ଦଶମିକ ");
+            text.push_str(&digits(self.fraction));
+        }
+        text
+    }
+
+    pub(crate) fn money(&self) -> Option<String> {
+        if self.fraction.len() > 2 || self.padded {
+            return None;
+        }
+        let mut text = format!("{}{} ଟଙ୍କା", self.sign, cardinal(self.integer));
+        let minor: u64 = match self.fraction.len() {
+            0 => 0,
+            1 => self.fraction.parse::<u64>().ok()? * 10,
+            _ => self.fraction.parse().ok()?,
+        };
+        if minor != 0 {
+            text.push_str(&format!(" {} ପଇସା", cardinal(minor)));
+        }
+        Some(text)
     }
 }
